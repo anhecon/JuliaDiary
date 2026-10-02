@@ -1,0 +1,338 @@
+/* Materia medica (本草 / Dược liệu), classical formulas (方剂 / Phương tễ)
+   and the traditional incompatibility lists: 十八反 (Thập bát phản) and 十九畏 (Thập cửu úy).
+   Doses are typical daily decoction ranges in grams from standard textbooks, for study only. */
+(function () {
+  'use strict';
+  var D = window.TCM.data;
+
+  D.natures = {
+    hot: { zh: '热', vi: 'Nhiệt', en: 'Hot', v: 3, cls: 't-hot' },
+    warm: { zh: '温', vi: 'Ôn', en: 'Warm', v: 2, cls: 't-warm' },
+    sl_warm: { zh: '微温', vi: 'Hơi ôn', en: 'Slightly warm', v: 1, cls: 't-warm' },
+    neutral: { zh: '平', vi: 'Bình', en: 'Neutral', v: 0, cls: 't-neutral' },
+    cool: { zh: '凉 / 微寒', vi: 'Lương (hơi hàn)', en: 'Cool', v: -1, cls: 't-cool' },
+    cold: { zh: '寒', vi: 'Hàn', en: 'Cold', v: -2, cls: 't-cold' },
+    v_cold: { zh: '大寒', vi: 'Đại hàn', en: 'Very cold', v: -3, cls: 't-cold' }
+  };
+  D.flavors = {
+    acrid: { zh: '辛', vi: 'Cay', en: 'Acrid' },
+    sweet: { zh: '甘', vi: 'Ngọt', en: 'Sweet' },
+    bitter: { zh: '苦', vi: 'Đắng', en: 'Bitter' },
+    sour: { zh: '酸', vi: 'Chua', en: 'Sour' },
+    salty: { zh: '咸', vi: 'Mặn', en: 'Salty' },
+    bland: { zh: '淡', vi: 'Nhạt', en: 'Bland' },
+    astr: { zh: '涩', vi: 'Chát', en: 'Astringent' }
+  };
+  D.categories = {
+    ext_warm: { zh: '辛温解表药', vi: 'Giải biểu tân ôn', en: 'Release exterior – warm' },
+    ext_cool: { zh: '辛凉解表药', vi: 'Giải biểu tân lương', en: 'Release exterior – cool' },
+    clear_heat: { zh: '清热药', vi: 'Thanh nhiệt', en: 'Clear heat' },
+    purge: { zh: '泻下药', vi: 'Tả hạ', en: 'Downward-draining' },
+    drain_damp: { zh: '利水渗湿药', vi: 'Lợi thủy thẩm thấp', en: 'Drain damp' },
+    aromatic: { zh: '化湿药', vi: 'Hóa thấp', en: 'Aromatic, transform damp' },
+    warm_int: { zh: '温里药', vi: 'Ôn lý', en: 'Warm the interior' },
+    qi: { zh: '理气药', vi: 'Lý khí', en: 'Regulate qi' },
+    blood: { zh: '活血化瘀药', vi: 'Hoạt huyết hóa ứ', en: 'Invigorate blood' },
+    bleed: { zh: '止血药', vi: 'Chỉ huyết', en: 'Stop bleeding' },
+    phlegm: { zh: '化痰止咳平喘药', vi: 'Hóa đàm, chỉ khái, bình suyễn', en: 'Phlegm, cough & wheezing' },
+    calm: { zh: '安神药', vi: 'An thần', en: 'Calm the spirit' },
+    t_qi: { zh: '补气药', vi: 'Bổ khí', en: 'Tonify qi' },
+    t_blood: { zh: '补血药', vi: 'Bổ huyết', en: 'Tonify blood' },
+    t_yin: { zh: '补阴药', vi: 'Bổ âm', en: 'Tonify yin' },
+    astringe: { zh: '收涩药', vi: 'Cố sáp', en: 'Astringent' },
+    emetic: { zh: '涌吐药', vi: 'Gây nôn (dũng thổ)', en: 'Emetic' }
+  };
+
+  function H(id, zh, py, vi, en, lat, cat, nat, fl, mer, dose, fn, extra) {
+    var o = { id: id, zh: zh, py: py, vi: vi, en: en, lat: lat, cat: cat, nat: nat, fl: fl, mer: mer, dose: dose, fn: fn };
+    if (extra) for (var k in extra) o[k] = extra[k];
+    return o;
+  }
+  function c(en, vi) { return { en: en, vi: vi }; }
+
+  D.herbs = [
+    // Tonify qi
+    H('ren_shen', '人参', 'Rén Shēn', 'Nhân sâm', 'Ginseng', 'Ginseng Radix', 't_qi', 'sl_warm', ['sweet', 'bitter'], ['SP', 'LU', 'HT'], [3, 9],
+      c('Powerfully tonifies original qi, tonifies Spleen and Lung, generates fluids, calms the spirit.', 'Đại bổ nguyên khí, bổ tỳ ích phế, sinh tân, an thần.'),
+      { caut: c('Avoid in excess heat. Incompatible with Lí Lú (18 antagonisms) and Wǔ Líng Zhī (19 fears).', 'Tránh dùng khi thực nhiệt. Phản Lê lô (thập bát phản), úy Ngũ linh chi (thập cửu úy).') }),
+    H('huang_qi', '黄芪', 'Huáng Qí', 'Hoàng kỳ', 'Astragalus root', 'Astragali Radix', 't_qi', 'sl_warm', ['sweet'], ['SP', 'LU'], [9, 30],
+      c('Tonifies Spleen qi and raises yang, secures the exterior to stop sweating, promotes urination, helps sores heal.', 'Bổ khí thăng dương, cố biểu chỉ hãn, lợi niệu, thác độc sinh cơ.'),
+      { caut: c('Avoid in exterior excess or with stagnation from damp or food.', 'Tránh dùng khi biểu thực hoặc thấp trệ, thực tích.') }),
+    H('bai_zhu', '白术', 'Bái Zhú', 'Bạch truật', 'White atractylodes', 'Atractylodis Macrocephalae Rhizoma', 't_qi', 'warm', ['bitter', 'sweet'], ['SP', 'ST'], [6, 12],
+      c('Tonifies Spleen qi, dries damp, stops sweating, calms the fetus.', 'Kiện tỳ ích khí, táo thấp, chỉ hãn, an thai.')),
+    H('shan_yao', '山药', 'Shān Yào', 'Hoài sơn (Sơn dược)', 'Chinese yam', 'Dioscoreae Rhizoma', 't_qi', 'neutral', ['sweet'], ['SP', 'LU', 'KI'], [15, 30],
+      c('Tonifies the qi and yin of Spleen, Lung and Kidney; stabilises essence.', 'Bổ khí âm của tỳ, phế, thận; cố tinh.'), { nam: true }),
+    H('gan_cao', '甘草', 'Gān Cǎo', 'Cam thảo', 'Licorice root', 'Glycyrrhizae Radix', 't_qi', 'neutral', ['sweet'], ['HT', 'LU', 'SP', 'ST'], [2, 10],
+      c('Tonifies Spleen qi, moistens the Lung, eases spasm and pain, resolves toxicity, harmonises a formula. Honey-fried (炙甘草, Chích cam thảo) in tonic formulas.', 'Bổ tỳ ích khí, nhuận phế, hoãn cấp chỉ thống, giải độc, điều hòa các vị thuốc. Dùng chích cam thảo trong bài bổ.'),
+      { caut: c('Large or long-term doses can cause oedema and raise blood pressure. Incompatible with Gān Suì, Dà Jǐ, Hǎi Zǎo, Yuán Huā (18 antagonisms).', 'Liều cao, dùng lâu gây phù, tăng huyết áp. Phản Cam toại, Đại kích, Hải tảo, Nguyên hoa (thập bát phản).') }),
+    H('da_zao', '大枣', 'Dà Zǎo', 'Đại táo', 'Jujube', 'Jujubae Fructus', 't_qi', 'warm', ['sweet'], ['SP', 'ST'], [6, 15],
+      c('Tonifies Spleen qi, nourishes blood, calms the spirit, moderates harsh herbs.', 'Bổ trung ích khí, dưỡng huyết, an thần, hòa hoãn tính thuốc.')),
+    H('jing_mi', '粳米', 'Jīng Mǐ', 'Ngạnh mễ (gạo tẻ)', 'Non-glutinous rice', 'Oryzae Semen', 't_qi', 'neutral', ['sweet'], ['SP', 'ST'], [9, 30],
+      c('Tonifies the middle, protects the Stomach from cold herbs, generates fluids.', 'Bổ trung, bảo vệ vị khí trước thuốc hàn, sinh tân.'), { nam: true }),
+    // Tonify blood
+    H('dang_gui', '当归', 'Dāng Guī', 'Đương quy', 'Chinese angelica root', 'Angelicae Sinensis Radix', 't_blood', 'warm', ['sweet', 'acrid'], ['LR', 'HT', 'SP'], [6, 12],
+      c('Tonifies and invigorates blood, regulates menstruation, stops pain, moistens the intestines.', 'Bổ huyết, hoạt huyết, điều kinh, chỉ thống, nhuận tràng.'),
+      { caut: c('Avoid with diarrhoea from damp. May interact with anticoagulants.', 'Tránh dùng khi tiêu chảy do thấp. Có thể tương tác với thuốc chống đông.') }),
+    H('shu_di', '熟地黄', 'Shú Dì Huáng', 'Thục địa', 'Prepared rehmannia', 'Rehmanniae Radix Praeparata', 't_blood', 'sl_warm', ['sweet'], ['LR', 'KI'], [9, 15],
+      c('Nourishes blood, enriches Kidney yin and essence.', 'Bổ huyết, tư âm, ích tinh tủy.'),
+      { caut: c('Cloying: can cause bloating when the Spleen is weak; often paired with Shā Rén or Chén Pí.', 'Tính nê trệ, dễ gây đầy bụng khi tỳ hư; hay phối Sa nhân hoặc Trần bì.') }),
+    H('bai_shao', '白芍', 'Bái Sháo', 'Bạch thược', 'White peony root', 'Paeoniae Radix Alba', 't_blood', 'cool', ['bitter', 'sour'], ['LR', 'SP'], [6, 15],
+      c('Nourishes blood, preserves yin, softens the Liver to stop pain, calms Liver yang.', 'Dưỡng huyết, liễm âm, nhu can chỉ thống, bình can dương.'),
+      { caut: c('Incompatible with Lí Lú (18 antagonisms).', 'Phản Lê lô (thập bát phản).') }),
+    H('he_shou_wu', '制何首乌', 'Zhì Hé Shǒu Wū', 'Hà thủ ô đỏ (chế)', 'Prepared fleeceflower root', 'Polygoni Multiflori Radix Praeparata', 't_blood', 'sl_warm', ['bitter', 'sweet', 'astr'], ['LR', 'KI'], [6, 12],
+      c('Tonifies Liver and Kidney, nourishes blood and essence, darkens the hair.', 'Bổ can thận, dưỡng huyết, ích tinh, làm đen râu tóc.'),
+      { nam: true, caut: c('Linked to liver injury: avoid high doses or long courses, and avoid in people with liver disease.', 'Có báo cáo gây tổn thương gan: tránh liều cao, dùng kéo dài, và tránh dùng cho người bệnh gan.') }),
+    // Tonify yin
+    H('gou_qi_zi', '枸杞子', 'Gǒu Qǐ Zǐ', 'Câu kỷ tử', 'Goji berry', 'Lycii Fructus', 't_yin', 'neutral', ['sweet'], ['LR', 'KI', 'LU'], [6, 12],
+      c('Nourishes Liver and Kidney yin and blood, benefits the eyes.', 'Tư bổ can thận, ích tinh, sáng mắt.')),
+    H('mai_dong', '麦冬', 'Mài Dōng', 'Mạch môn', 'Ophiopogon root', 'Ophiopogonis Radix', 't_yin', 'cool', ['sweet', 'bitter'], ['HT', 'LU', 'ST'], [6, 12],
+      c('Nourishes yin, moistens the Lung, benefits the Stomach, clears Heart heat.', 'Dưỡng âm nhuận phế, ích vị sinh tân, thanh tâm trừ phiền.'),
+      { nam: true, caut: c('Avoid with Spleen-deficiency diarrhoea or cold-phlegm cough.', 'Tránh dùng khi tỳ hư tiêu chảy hoặc ho đàm hàn.') }),
+    H('mo_han_lian', '墨旱莲', 'Mò Hàn Lián', 'Cỏ mực (Mặc hạn liên)', 'Eclipta', 'Ecliptae Herba', 't_yin', 'cold', ['sweet', 'sour'], ['LR', 'KI'], [6, 12],
+      c('Nourishes Liver and Kidney yin, cools blood and stops bleeding.', 'Tư bổ can thận âm, lương huyết chỉ huyết.'),
+      { nam: true, caut: c('Avoid with Spleen-deficiency cold and diarrhoea.', 'Tránh dùng khi tỳ vị hư hàn, tiêu chảy.') }),
+    // Astringent
+    H('wu_wei_zi', '五味子', 'Wǔ Wèi Zǐ', 'Ngũ vị tử', 'Schisandra berry', 'Schisandrae Chinensis Fructus', 'astringe', 'warm', ['sour', 'sweet'], ['LU', 'HT', 'KI'], [2, 6],
+      c('Contains leakage of Lung qi, stops sweating, generates fluids, calms the spirit, secures essence.', 'Liễm phế, chỉ hãn, sinh tân, an thần, cố tinh.'),
+      { caut: c('Avoid while an exterior pattern is unresolved or with interior excess heat.', 'Tránh dùng khi biểu tà chưa giải hoặc lý thực nhiệt.') }),
+    H('shan_zhu_yu', '山茱萸', 'Shān Zhū Yú', 'Sơn thù du', 'Cornelian cherry', 'Corni Fructus', 'astringe', 'sl_warm', ['sour', 'astr'], ['LR', 'KI'], [6, 12],
+      c('Tonifies Liver and Kidney, secures essence, stops excessive sweating.', 'Bổ ích can thận, sáp tinh, chỉ hãn.')),
+    H('chi_shi_zhi', '赤石脂', 'Chì Shí Zhī', 'Xích thạch chi', 'Halloysite (red clay)', 'Halloysitum Rubrum', 'astringe', 'warm', ['sweet', 'sour', 'astr'], ['LI', 'ST'], [9, 12],
+      c('Binds the intestines to stop chronic diarrhoea and bleeding.', 'Sáp trường chỉ tả, chỉ huyết.'),
+      { preg: 'caution', caut: c('Incompatible with Ròu Guì (19 fears). Caution in pregnancy.', 'Úy Nhục quế (thập cửu úy). Thận trọng khi có thai.') }),
+    // Exterior – warm
+    H('ma_huang', '麻黄', 'Má Huáng', 'Ma hoàng', 'Ephedra', 'Ephedrae Herba', 'ext_warm', 'warm', ['acrid', 'bitter'], ['LU', 'BL'], [2, 10],
+      c('Induces sweating to release the exterior, diffuses the Lung to calm wheezing, promotes urination.', 'Phát hãn giải biểu, tuyên phế bình suyễn, lợi thủy.'),
+      { caut: c('Contains ephedrine: avoid with high blood pressure, heart disease, insomnia or spontaneous sweating. Restricted in many countries.', 'Chứa ephedrin: tránh dùng khi tăng huyết áp, bệnh tim, mất ngủ, tự hãn. Bị hạn chế ở nhiều nước.') }),
+    H('gui_zhi', '桂枝', 'Guì Zhī', 'Quế chi', 'Cinnamon twig', 'Cinnamomi Ramulus', 'ext_warm', 'warm', ['acrid', 'sweet'], ['HT', 'LU', 'BL'], [3, 10],
+      c('Releases the muscle layer, harmonises nutritive and defensive qi, warms and unblocks the channels and yang.', 'Phát hãn giải cơ, điều hòa dinh vệ, ôn thông kinh mạch, thông dương.'),
+      { preg: 'caution', caut: c('Avoid in heat or yin-deficiency patterns. Caution in pregnancy.', 'Tránh dùng khi nhiệt chứng, âm hư. Thận trọng khi có thai.') }),
+    H('sheng_jiang', '生姜', 'Shēng Jiāng', 'Sinh khương (gừng tươi)', 'Fresh ginger', 'Zingiberis Rhizoma Recens', 'ext_warm', 'sl_warm', ['acrid'], ['LU', 'SP', 'ST'], [3, 10],
+      c('Releases the exterior, warms the middle, stops vomiting, warms the Lung; reduces the toxicity of Bàn Xià.', 'Giải biểu, ôn trung, chỉ ẩu, ôn phế; giải độc Bán hạ.'), { nam: true }),
+    H('zi_su_ye', '紫苏叶', 'Zǐ Sū Yè', 'Tía tô (Tử tô diệp)', 'Perilla leaf', 'Perillae Folium', 'ext_warm', 'warm', ['acrid'], ['LU', 'SP'], [5, 10],
+      c('Releases the exterior, moves qi in the middle, calms the fetus, relieves fish and crab poisoning.', 'Giải biểu tán hàn, hành khí khoan trung, an thai, giải độc cá cua.'), { nam: true }),
+    H('jing_jie', '荆芥', 'Jīng Jiè', 'Kinh giới', 'Schizonepeta', 'Schizonepetae Herba', 'ext_warm', 'sl_warm', ['acrid'], ['LU', 'LR'], [5, 10],
+      c('Expels wind and releases the exterior for wind-cold or wind-heat; vents rashes.', 'Khu phong giải biểu cho cả phong hàn và phong nhiệt; thấu chẩn.'),
+      { nam: true, note: c('In Vietnam, "kinh giới" usually means Elsholtzia ciliata, a different plant from the Chinese Jīng Jiè (Schizonepeta).', 'Ở Việt Nam, “kinh giới” thường là cây Elsholtzia ciliata, khác với Kinh giới (Schizonepeta) của Trung Quốc.') }),
+    H('xi_xin', '细辛', 'Xì Xīn', 'Tế tân', 'Asarum', 'Asari Radix et Rhizoma', 'ext_warm', 'warm', ['acrid'], ['LU', 'KI', 'HT'], [1, 3],
+      c('Dispels wind-cold, stops pain, warms the Lung to transform fluids, opens the nose.', 'Tán hàn giải biểu, chỉ thống, ôn phế hóa ẩm, thông khiếu.'),
+      { tox: true, caut: c('Toxic. Classical rule: "细辛不过钱", do not exceed about 3 g. Incompatible with Lí Lú (18 antagonisms).', 'Có độc. Câu xưa: “Tế tân bất quá tiền”, không quá khoảng 3 g. Phản Lê lô (thập bát phản).') }),
+    // Exterior – cool
+    H('bo_he', '薄荷', 'Bò He', 'Bạc hà', 'Field mint', 'Menthae Haplocalycis Herba', 'ext_cool', 'cool', ['acrid'], ['LU', 'LR'], [3, 6],
+      c('Disperses wind-heat, clears the head and eyes, benefits the throat, vents rashes, spreads Liver qi.', 'Sơ tán phong nhiệt, thanh lợi đầu mắt, lợi hầu họng, thấu chẩn, sơ can.'),
+      { nam: true, caut: c('Add near the end of decoction (后下). Avoid with spontaneous sweating.', 'Cho vào sau cùng khi sắc (hậu hạ). Tránh dùng khi tự hãn.') }),
+    H('niu_bang_zi', '牛蒡子', 'Niú Bàng Zǐ', 'Ngưu bàng tử', 'Burdock fruit', 'Arctii Fructus', 'ext_cool', 'cold', ['acrid', 'bitter'], ['LU', 'ST'], [6, 12],
+      c('Disperses wind-heat, benefits the throat, resolves toxicity.', 'Sơ tán phong nhiệt, lợi hầu, giải độc.'),
+      { caut: c('Avoid with loose stools from Spleen deficiency.', 'Tránh dùng khi tỳ hư phân lỏng.') }),
+    H('sheng_ma', '升麻', 'Shēng Má', 'Thăng ma', 'Black cohosh rhizome', 'Cimicifugae Rhizoma', 'ext_cool', 'cool', ['acrid', 'sweet'], ['LU', 'SP', 'ST', 'LI'], [3, 10],
+      c('Releases the exterior, vents rashes, clears heat toxin, raises sunken yang qi.', 'Giải biểu thấu chẩn, thanh nhiệt giải độc, thăng dương cử hãm.')),
+    H('ge_gen', '葛根', 'Gé Gēn', 'Cát căn (sắn dây)', 'Kudzu root', 'Puerariae Lobatae Radix', 'ext_cool', 'cool', ['sweet', 'acrid'], ['SP', 'ST'], [10, 15],
+      c('Releases the muscle layer (stiff neck), vents rashes, generates fluids, raises yang to stop diarrhoea.', 'Giải cơ thoái nhiệt (cứng gáy), thấu chẩn, sinh tân, thăng dương chỉ tả.'), { nam: true }),
+    H('chai_hu', '柴胡', 'Chái Hú', 'Sài hồ', 'Bupleurum root', 'Bupleuri Radix', 'ext_cool', 'cool', ['bitter', 'acrid'], ['LR', 'GB'], [3, 10],
+      c('Harmonises shaoyang, spreads Liver qi, raises yang.', 'Hòa giải thiếu dương, sơ can giải uất, thăng dương.'),
+      { caut: c('Use cautiously with rising Liver yang or yin deficiency.', 'Thận trọng khi can dương thượng cang hoặc âm hư.') }),
+    // Clear heat
+    H('jin_yin_hua', '金银花', 'Jīn Yín Huā', 'Kim ngân hoa', 'Honeysuckle flower', 'Lonicerae Japonicae Flos', 'clear_heat', 'cold', ['sweet'], ['LU', 'HT', 'ST'], [6, 15],
+      c('Clears heat and toxicity, disperses wind-heat.', 'Thanh nhiệt giải độc, sơ tán phong nhiệt.'), { nam: true }),
+    H('lian_qiao', '连翘', 'Lián Qiáo', 'Liên kiều', 'Forsythia fruit', 'Forsythiae Fructus', 'clear_heat', 'cool', ['bitter'], ['LU', 'HT', 'SI'], [6, 15],
+      c('Clears heat and toxicity, reduces swellings and nodules, disperses wind-heat.', 'Thanh nhiệt giải độc, tiêu thũng tán kết, sơ tán phong nhiệt.')),
+    H('shi_gao', '石膏', 'Shí Gāo', 'Thạch cao', 'Gypsum', 'Gypsum Fibrosum', 'clear_heat', 'v_cold', ['acrid', 'sweet'], ['LU', 'ST'], [15, 60],
+      c('Clears heat and drains fire at the qi level, relieves thirst and restlessness.', 'Thanh nhiệt tả hỏa ở khí phận, trừ phiền chỉ khát.'),
+      { caut: c('Crush and decoct first (先煎). Avoid with Stomach cold.', 'Đập nhỏ, sắc trước (tiên tiễn). Tránh dùng khi vị hàn.') }),
+    H('zhi_mu', '知母', 'Zhī Mǔ', 'Tri mẫu', 'Anemarrhena rhizome', 'Anemarrhenae Rhizoma', 'clear_heat', 'cold', ['bitter', 'sweet'], ['LU', 'ST', 'KI'], [6, 12],
+      c('Clears heat, drains fire, enriches yin, moistens dryness.', 'Thanh nhiệt tả hỏa, tư âm nhuận táo.'),
+      { caut: c('Avoid with Spleen deficiency and loose stools.', 'Tránh dùng khi tỳ hư phân lỏng.') }),
+    H('huang_lian', '黄连', 'Huáng Lián', 'Hoàng liên', 'Coptis rhizome', 'Coptidis Rhizoma', 'clear_heat', 'cold', ['bitter'], ['HT', 'LR', 'ST', 'LI'], [2, 5],
+      c('Clears heat, dries damp, drains fire, resolves toxicity (strongest in the middle burner and Heart).', 'Thanh nhiệt táo thấp, tả hỏa giải độc (mạnh ở trung tiêu và tâm).'),
+      { caut: c('Very bitter and cold: can injure the Stomach; avoid with Spleen–Stomach deficiency cold.', 'Rất đắng, lạnh: dễ hại vị; tránh dùng khi tỳ vị hư hàn.') }),
+    H('huang_qin', '黄芩', 'Huáng Qín', 'Hoàng cầm', 'Baical skullcap root', 'Scutellariae Radix', 'clear_heat', 'cold', ['bitter'], ['LU', 'GB', 'ST', 'LI'], [3, 10],
+      c('Clears heat and dries damp (upper burner), drains fire, stops bleeding, calms the fetus.', 'Thanh nhiệt táo thấp (thượng tiêu), tả hỏa, chỉ huyết, an thai.')),
+    H('huang_bai', '黄柏', 'Huáng Bǎi', 'Hoàng bá', 'Phellodendron bark', 'Phellodendri Chinensis Cortex', 'clear_heat', 'cold', ['bitter'], ['KI', 'BL', 'LI'], [3, 12],
+      c('Clears heat and dries damp (lower burner), drains deficiency fire.', 'Thanh nhiệt táo thấp (hạ tiêu), thanh hư nhiệt.')),
+    H('zhi_zi', '栀子', 'Zhī Zǐ', 'Chi tử (dành dành)', 'Gardenia fruit', 'Gardeniae Fructus', 'clear_heat', 'cold', ['bitter'], ['HT', 'LU', 'TE'], [6, 10],
+      c('Drains fire from all three burners, relieves restlessness, cools blood, clears damp-heat.', 'Tả hỏa tam tiêu, trừ phiền, lương huyết, thanh thấp nhiệt.'), { nam: true }),
+    H('mu_dan_pi', '牡丹皮', 'Mǔ Dān Pí', 'Đan bì (Mẫu đơn bì)', 'Tree peony root bark', 'Moutan Cortex', 'clear_heat', 'cool', ['bitter', 'acrid'], ['HT', 'LR', 'KI'], [6, 12],
+      c('Clears heat, cools and invigorates blood, clears deficiency heat.', 'Thanh nhiệt lương huyết, hoạt huyết hóa ứ, thanh hư nhiệt.'),
+      { preg: 'caution', caut: c('Caution in pregnancy and with heavy periods.', 'Thận trọng khi có thai và kinh nguyệt nhiều.') }),
+    H('yu_xing_cao', '鱼腥草', 'Yú Xīng Cǎo', 'Diếp cá (Ngư tinh thảo)', 'Houttuynia', 'Houttuyniae Herba', 'clear_heat', 'cool', ['acrid'], ['LU'], [15, 25],
+      c('Clears heat and toxicity, treats Lung abscess and phlegm-heat cough, promotes urination.', 'Thanh nhiệt giải độc, tiêu ung (phế ung), trị ho đàm nhiệt, lợi niệu.'),
+      { nam: true, caut: c('Add near the end of decoction to keep its aromatic oils.', 'Cho vào sau khi sắc để giữ tinh dầu.') }),
+    H('ji_xue_cao', '积雪草', 'Jī Xuě Cǎo', 'Rau má (Tích tuyết thảo)', 'Gotu kola', 'Centellae Herba', 'clear_heat', 'cold', ['bitter', 'acrid'], ['LR', 'SP', 'ST'], [15, 30],
+      c('Clears heat and damp, resolves toxicity, reduces swelling.', 'Thanh nhiệt lợi thấp, giải độc, tiêu thũng.'),
+      { nam: true, caut: c('Cold: avoid with Spleen–Stomach deficiency cold.', 'Tính hàn: tránh dùng khi tỳ vị hư hàn.') }),
+    // Purge
+    H('da_huang', '大黄', 'Dà Huáng', 'Đại hoàng', 'Rhubarb root', 'Rhei Radix et Rhizoma', 'purge', 'cold', ['bitter'], ['SP', 'ST', 'LI', 'LR', 'PC'], [3, 15],
+      c('Purges accumulations, drains heat and fire, cools and invigorates blood.', 'Tả hạ công tích, thanh nhiệt tả hỏa, lương huyết, hoạt huyết.'),
+      { preg: 'caution', caut: c('Caution in pregnancy, during menstruation and when breastfeeding. Add near the end for a purging effect.', 'Thận trọng khi có thai, hành kinh, cho con bú. Muốn tả hạ thì cho vào sau.') }),
+    H('gan_sui', '甘遂', 'Gān Suì', 'Cam toại', 'Kansui root', 'Kansui Radix', 'purge', 'cold', ['bitter'], ['LU', 'KI', 'LI'], [0.5, 1.5],
+      c('Drastically drives out water (a harsh expellant).', 'Tả thủy trục ẩm mạnh (thuốc tuấn hạ trục thủy).'),
+      { tox: true, preg: 'contra', caut: c('Toxic; pills or powder only. Contraindicated in pregnancy. Incompatible with Gān Cǎo (18 antagonisms).', 'Có độc; chỉ dùng hoàn tán. Chống chỉ định khi có thai. Phản Cam thảo (thập bát phản).') }),
+    // Drain damp
+    H('fu_ling', '茯苓', 'Fú Líng', 'Phục linh', 'Poria', 'Poria', 'drain_damp', 'neutral', ['sweet', 'bland'], ['HT', 'SP', 'KI'], [9, 15],
+      c('Promotes urination and drains damp, strengthens the Spleen, calms the spirit.', 'Lợi thủy thẩm thấp, kiện tỳ, an thần.')),
+    H('ze_xie', '泽泻', 'Zé Xiè', 'Trạch tả', 'Water plantain rhizome', 'Alismatis Rhizoma', 'drain_damp', 'cold', ['sweet', 'bland'], ['KI', 'BL'], [6, 10],
+      c('Promotes urination, drains damp, clears Kidney deficiency fire.', 'Lợi thủy thẩm thấp, tả thận hỏa.')),
+    // Aromatic / qi
+    H('sha_ren', '砂仁', 'Shā Rén', 'Sa nhân', 'Amomum fruit', 'Amomi Fructus', 'aromatic', 'warm', ['acrid'], ['SP', 'ST', 'KI'], [3, 6],
+      c('Transforms damp, moves qi, warms the middle, stops vomiting, calms the fetus.', 'Hóa thấp hành khí, ôn trung chỉ ẩu, an thai.'),
+      { nam: true, caut: c('Add near the end of decoction.', 'Cho vào sau khi sắc.') }),
+    H('chen_pi', '陈皮', 'Chén Pí', 'Trần bì', 'Aged tangerine peel', 'Citri Reticulatae Pericarpium', 'qi', 'warm', ['acrid', 'bitter'], ['SP', 'LU'], [3, 10],
+      c('Regulates qi, strengthens the Spleen, dries damp, transforms phlegm.', 'Lý khí kiện tỳ, táo thấp hóa đàm.'), { nam: true }),
+    H('mu_xiang', '木香', 'Mù Xiāng', 'Mộc hương', 'Costus root', 'Aucklandiae Radix', 'qi', 'warm', ['acrid', 'bitter'], ['SP', 'ST', 'LI', 'TE', 'GB'], [3, 6],
+      c('Moves qi and stops pain, strengthens the Spleen, prevents tonics from causing stagnation.', 'Hành khí chỉ thống, kiện tỳ tiêu thực, chống nê trệ của thuốc bổ.')),
+    // Warm interior
+    H('fu_zi', '制附子', 'Zhì Fù Zǐ', 'Phụ tử chế', 'Prepared aconite root', 'Aconiti Lateralis Radix Praeparata', 'warm_int', 'hot', ['acrid', 'sweet'], ['HT', 'KI', 'SP'], [3, 15],
+      c('Restores devastated yang, tonifies fire of the gate of vitality, dispels cold and stops pain.', 'Hồi dương cứu nghịch, bổ hỏa trợ dương, tán hàn chỉ thống.'),
+      { tox: true, preg: 'contra', caut: c('Toxic (aconitine): use only the processed form and decoct first for 30–60 minutes. Contraindicated in pregnancy. Incompatible with Bàn Xià, Guā Lóu, Bèi Mǔ, Bái Liǎn, Bái Jí (18 antagonisms).', 'Có độc (aconitin): chỉ dùng loại đã chế và sắc trước 30–60 phút. Chống chỉ định khi có thai. Phản Bán hạ, Qua lâu, Bối mẫu, Bạch liễm, Bạch cập (thập bát phản).') }),
+    H('gan_jiang', '干姜', 'Gān Jiāng', 'Can khương (gừng khô)', 'Dried ginger', 'Zingiberis Rhizoma', 'warm_int', 'hot', ['acrid'], ['SP', 'ST', 'KI', 'HT', 'LU'], [3, 10],
+      c('Warms the middle and dispels cold, restores yang, warms the Lung to transform fluids.', 'Ôn trung tán hàn, hồi dương thông mạch, ôn phế hóa ẩm.'),
+      { nam: true, preg: 'caution', caut: c('Avoid in yin deficiency with heat. Caution in pregnancy.', 'Tránh dùng khi âm hư nội nhiệt. Thận trọng khi có thai.') }),
+    H('rou_gui', '肉桂', 'Ròu Guì', 'Nhục quế', 'Cinnamon bark', 'Cinnamomi Cortex', 'warm_int', 'hot', ['acrid', 'sweet'], ['KI', 'SP', 'HT', 'LR'], [1, 5],
+      c('Tonifies fire of the gate of vitality, dispels cold, warms the channels, guides fire back to its source.', 'Bổ hỏa trợ dương, tán hàn chỉ thống, ôn kinh thông mạch, dẫn hỏa quy nguyên.'),
+      { nam: true, preg: 'caution', caut: c('Incompatible with Chì Shí Zhī (19 fears). Caution in pregnancy. Add at the end of decoction.', 'Úy Xích thạch chi (thập cửu úy). Thận trọng khi có thai. Cho vào sau cùng.') }),
+    H('ding_xiang', '丁香', 'Dīng Xiāng', 'Đinh hương', 'Clove', 'Caryophylli Flos', 'warm_int', 'warm', ['acrid'], ['SP', 'ST', 'LU', 'KI'], [1, 3],
+      c('Warms the middle, descends rebellious qi to stop hiccups, warms the Kidney.', 'Ôn trung giáng nghịch (chỉ nấc), ôn thận trợ dương.'),
+      { caut: c('Incompatible with Yù Jīn (19 fears).', 'Úy Uất kim (thập cửu úy).') }),
+    // Blood
+    H('chuan_xiong', '川芎', 'Chuān Xiōng', 'Xuyên khung', 'Sichuan lovage root', 'Chuanxiong Rhizoma', 'blood', 'warm', ['acrid'], ['LR', 'GB', 'PC'], [3, 10],
+      c('Invigorates blood and moves qi, expels wind, stops pain (especially headache).', 'Hoạt huyết hành khí, khu phong chỉ thống (nhất là đau đầu).'),
+      { preg: 'caution', caut: c('Caution in pregnancy, heavy periods, or yin deficiency with heat.', 'Thận trọng khi có thai, kinh nhiều, âm hư hỏa vượng.') }),
+    H('dan_shen', '丹参', 'Dān Shēn', 'Đan sâm', 'Salvia root', 'Salviae Miltiorrhizae Radix', 'blood', 'cool', ['bitter'], ['HT', 'PC', 'LR'], [10, 15],
+      c('Invigorates blood, regulates menstruation, cools blood, calms the spirit.', 'Hoạt huyết điều kinh, lương huyết, an thần.'),
+      { preg: 'caution', caut: c('Incompatible with Lí Lú (18 antagonisms). Interacts with warfarin. Caution in pregnancy.', 'Phản Lê lô (thập bát phản). Tương tác với warfarin. Thận trọng khi có thai.') }),
+    H('tao_ren', '桃仁', 'Táo Rén', 'Đào nhân', 'Peach kernel', 'Persicae Semen', 'blood', 'neutral', ['bitter', 'sweet'], ['HT', 'LR', 'LI'], [5, 10],
+      c('Breaks up blood stasis, moistens the intestines, stops cough.', 'Phá huyết hành ứ, nhuận tràng, chỉ khái.'),
+      { tox: true, preg: 'contra', caut: c('Slightly toxic. Contraindicated in pregnancy.', 'Hơi độc. Chống chỉ định khi có thai.') }),
+    H('hong_hua', '红花', 'Hóng Huā', 'Hồng hoa', 'Safflower', 'Carthami Flos', 'blood', 'warm', ['acrid'], ['HT', 'LR'], [3, 10],
+      c('Invigorates blood, unblocks menstruation, dispels stasis, stops pain.', 'Hoạt huyết thông kinh, khứ ứ chỉ thống.'),
+      { preg: 'contra', caut: c('Contraindicated in pregnancy and bleeding disorders.', 'Chống chỉ định khi có thai và rối loạn chảy máu.') }),
+    H('yi_mu_cao', '益母草', 'Yì Mǔ Cǎo', 'Ích mẫu', 'Motherwort', 'Leonuri Herba', 'blood', 'cool', ['acrid', 'bitter'], ['LR', 'PC', 'BL'], [9, 30],
+      c('Invigorates blood and regulates menstruation, promotes urination, reduces swelling.', 'Hoạt huyết điều kinh, lợi thủy tiêu thũng.'),
+      { nam: true, preg: 'contra', caut: c('Contraindicated in pregnancy.', 'Chống chỉ định khi có thai.') }),
+    H('yu_jin', '郁金', 'Yù Jīn', 'Uất kim', 'Turmeric tuber', 'Curcumae Radix', 'blood', 'cold', ['acrid', 'bitter'], ['HT', 'LR', 'GB', 'LU'], [3, 10],
+      c('Invigorates blood and moves qi, clears the Heart, cools blood, benefits the Gallbladder.', 'Hoạt huyết hành khí, thanh tâm, lương huyết, lợi đởm.'),
+      { nam: true, preg: 'caution', caut: c('Incompatible with Dīng Xiāng (19 fears). Caution in pregnancy.', 'Úy Đinh hương (thập cửu úy). Thận trọng khi có thai.') }),
+    H('wu_ling_zhi', '五灵脂', 'Wǔ Líng Zhī', 'Ngũ linh chi', 'Flying squirrel faeces', 'Trogopteri Faeces', 'blood', 'warm', ['bitter', 'salty', 'sweet'], ['LR'], [3, 10],
+      c('Invigorates blood, stops pain, dispels stasis and stops bleeding.', 'Hoạt huyết chỉ thống, hóa ứ chỉ huyết.'),
+      { preg: 'caution', caut: c('Incompatible with Rén Shēn (19 fears). Caution in pregnancy.', 'Úy Nhân sâm (thập cửu úy). Thận trọng khi có thai.') }),
+    // Bleeding
+    H('ai_ye', '艾叶', 'Ài Yè', 'Ngải cứu (Ngải diệp)', 'Mugwort leaf', 'Artemisiae Argyi Folium', 'bleed', 'warm', ['acrid', 'bitter'], ['LR', 'SP', 'KI'], [3, 9],
+      c('Warms the channels to stop bleeding, dispels cold, stops pain, calms the fetus. Dried and aged, it is the moxa used in moxibustion.', 'Ôn kinh chỉ huyết, tán hàn chỉ thống, an thai. Phơi khô, để lâu làm ngải cứu (mồi ngải) dùng trong cứu.'),
+      { nam: true, tox: true, caut: c('Slightly toxic in large doses.', 'Liều cao có độc nhẹ.') }),
+    // Phlegm
+    H('ban_xia', '法半夏', 'Fǎ Bàn Xià', 'Bán hạ chế', 'Prepared pinellia', 'Pinelliae Rhizoma Praeparatum', 'phlegm', 'warm', ['acrid'], ['SP', 'ST', 'LU'], [3, 9],
+      c('Dries damp and transforms phlegm, descends rebellious qi, stops vomiting, dissipates nodules.', 'Táo thấp hóa đàm, giáng nghịch chỉ ẩu, tiêu bĩ tán kết.'),
+      { tox: true, preg: 'caution', caut: c('Raw pinellia is toxic; use the prepared form. Incompatible with Wū Tóu / Fù Zǐ (18 antagonisms). Caution in pregnancy.', 'Bán hạ sống có độc; dùng loại đã chế. Phản Ô đầu / Phụ tử (thập bát phản). Thận trọng khi có thai.') }),
+    H('xing_ren', '苦杏仁', 'Kǔ Xìng Rén', 'Hạnh nhân (khổ)', 'Bitter apricot kernel', 'Armeniacae Semen Amarum', 'phlegm', 'sl_warm', ['bitter'], ['LU', 'LI'], [5, 10],
+      c('Descends Lung qi to stop cough and wheezing, moistens the intestines.', 'Giáng khí chỉ khái bình suyễn, nhuận tràng thông tiện.'),
+      { tox: true, caut: c('Contains amygdalin: keep within dose, extra care with children.', 'Chứa amygdalin: không vượt liều, đặc biệt thận trọng với trẻ em.') }),
+    H('jie_geng', '桔梗', 'Jié Gěng', 'Cát cánh', 'Platycodon root', 'Platycodonis Radix', 'phlegm', 'neutral', ['bitter', 'acrid'], ['LU'], [3, 10],
+      c('Opens and diffuses Lung qi, expels phlegm, benefits the throat, carries other herbs upward.', 'Tuyên phế, khử đàm, lợi hầu, dẫn thuốc đi lên.')),
+    H('chuan_bei_mu', '川贝母', 'Chuān Bèi Mǔ', 'Xuyên bối mẫu', 'Sichuan fritillary bulb', 'Fritillariae Cirrhosae Bulbus', 'phlegm', 'cool', ['bitter', 'sweet'], ['LU', 'HT'], [3, 10],
+      c('Clears heat and transforms phlegm, moistens the Lung, dissipates nodules.', 'Thanh nhiệt hóa đàm, nhuận phế chỉ khái, tán kết.'),
+      { caut: c('Incompatible with Wū Tóu / Fù Zǐ (18 antagonisms).', 'Phản Ô đầu / Phụ tử (thập bát phản).') }),
+    H('gua_lou', '瓜蒌', 'Guā Lóu', 'Qua lâu', 'Trichosanthes fruit', 'Trichosanthis Fructus', 'phlegm', 'cold', ['sweet', 'bitter'], ['LU', 'ST', 'LI'], [9, 15],
+      c('Clears heat and transforms phlegm, opens the chest, moistens the intestines.', 'Thanh nhiệt hóa đàm, khoan hung tán kết, nhuận tràng.'),
+      { caut: c('Incompatible with Wū Tóu / Fù Zǐ (18 antagonisms). Avoid with loose stools.', 'Phản Ô đầu / Phụ tử (thập bát phản). Tránh dùng khi phân lỏng.') }),
+    H('hai_zao', '海藻', 'Hǎi Zǎo', 'Hải tảo', 'Sargassum seaweed', 'Sargassum', 'phlegm', 'cold', ['salty', 'bitter'], ['LR', 'ST', 'KI'], [6, 12],
+      c('Softens hardness, dissipates nodules (such as goitre), resolves phlegm.', 'Tiêu đàm nhuyễn kiên (bướu cổ, tràng nhạc), lợi thủy.'),
+      { caut: c('Incompatible with Gān Cǎo (18 antagonisms).', 'Phản Cam thảo (thập bát phản).') }),
+    // Calm
+    H('suan_zao_ren', '酸枣仁', 'Suān Zǎo Rén', 'Toan táo nhân', 'Sour jujube seed', 'Ziziphi Spinosae Semen', 'calm', 'neutral', ['sweet', 'sour'], ['HT', 'LR', 'GB'], [10, 15],
+      c('Nourishes Heart and Liver blood, calms the spirit, stops sweating.', 'Dưỡng tâm can huyết, an thần, liễm hãn.')),
+    // Emetic (reference)
+    H('li_lu', '藜芦', 'Lí Lú', 'Lê lô', 'Veratrum root', 'Veratri Nigri Radix et Rhizoma', 'emetic', 'cold', ['acrid', 'bitter'], ['LU', 'ST', 'LR'], [0.3, 0.6],
+      c('Historically used to induce vomiting of phlegm. Included here as the classic partner in the 18 antagonisms.', 'Xưa dùng để gây nôn tống đàm. Đưa vào đây vì là vị kinh điển trong thập bát phản.'),
+      { tox: true, preg: 'contra', caut: c('Highly toxic; rarely used internally today. Incompatible with all the "shēn" roots (Rén Shēn, Dān Shēn and others), Xì Xīn and Sháo Yào.', 'Rất độc; ngày nay hầu như không dùng uống. Phản các loại sâm (Nhân sâm, Đan sâm…), Tế tân, Thược dược.') })
+  ];
+  D.herbById = {};
+  D.herbs.forEach(function (h) { D.herbById[h.id] = h; });
+
+  /* Incompatibilities that can occur between herbs in this library. */
+  D.antagonisms = [
+    ['gan_cao', 'gan_sui'], ['gan_cao', 'hai_zao'],
+    ['fu_zi', 'ban_xia'], ['fu_zi', 'gua_lou'], ['fu_zi', 'chuan_bei_mu'],
+    ['li_lu', 'ren_shen'], ['li_lu', 'dan_shen'], ['li_lu', 'bai_shao'], ['li_lu', 'xi_xin']
+  ];
+  D.fears = [['ren_shen', 'wu_ling_zhi'], ['ding_xiang', 'yu_jin'], ['rou_gui', 'chi_shi_zhi']];
+
+  /* Roles: 君 Quân (chief), 臣 Thần (deputy), 佐 Tá (assistant), 使 Sứ (envoy). */
+  D.roles = {
+    Q: { zh: '君', vi: 'Quân', en: 'Chief', cls: 'role-q' },
+    T: { zh: '臣', vi: 'Thần', en: 'Deputy', cls: 'role-t' },
+    Ta: { zh: '佐', vi: 'Tá', en: 'Assistant', cls: 'role-ta' },
+    S: { zh: '使', vi: 'Sứ', en: 'Envoy', cls: 'role-su' }
+  };
+
+  function F(id, zh, py, vi, en, src, pattern, principle, herbs, note) {
+    return { id: id, zh: zh, py: py, vi: vi, en: en, src: src, pattern: pattern, principle: principle, herbs: herbs, note: note };
+  }
+  D.formulas = [
+    F('si_jun_zi_tang', '四君子汤', 'Sì Jūnzǐ Tāng', 'Tứ quân tử thang', 'Four Gentlemen Decoction',
+      { zh: '太平惠民和剂局方', vi: 'Thái bình huệ dân hòa tễ cục phương (Tống)', en: 'Imperial Grace Formulary (Song dynasty)' }, 'sp_qi_def', 'tonify_sp_qi',
+      [['ren_shen', 'Q', 9], ['bai_zhu', 'T', 9], ['fu_ling', 'Ta', 9], ['gan_cao', 'S', 6]],
+      c('The root formula for Spleen qi deficiency. Many later formulas, such as Liù Jūnzǐ Tāng, are built on it.', 'Bài thuốc gốc của tỳ khí hư. Nhiều bài về sau như Lục quân tử thang được gia giảm từ bài này.')),
+    F('bu_zhong_yi_qi_tang', '补中益气汤', 'Bǔ Zhōng Yì Qì Tāng', 'Bổ trung ích khí thang', 'Tonify the Middle and Augment Qi Decoction',
+      { zh: '脾胃论 · 李东垣', vi: 'Tỳ vị luận · Lý Đông Viên (Kim–Nguyên)', en: 'Treatise on the Spleen and Stomach · Li Dongyuan' }, 'sp_qi_sink', 'raise_yang',
+      [['huang_qi', 'Q', 18], ['ren_shen', 'T', 6], ['bai_zhu', 'T', 9], ['gan_cao', 'T', 9], ['dang_gui', 'Ta', 3], ['chen_pi', 'Ta', 6], ['sheng_ma', 'S', 6], ['chai_hu', 'S', 6]],
+      c('For Spleen qi deficiency with sinking: prolapse, chronic diarrhoea, fatigue with low fever.', 'Trị tỳ khí hư hạ hãm: sa giáng, tiêu chảy lâu ngày, mệt mỏi sốt nhẹ.')),
+    F('li_zhong_wan', '理中丸', 'Lǐ Zhōng Wán', 'Lý trung hoàn', 'Regulate the Middle Pill',
+      { zh: '伤寒论 · 张仲景', vi: 'Thương hàn luận · Trương Trọng Cảnh', en: 'Discussion of Cold Damage · Zhang Zhongjing' }, 'sp_yang_def', 'warm_middle',
+      [['gan_jiang', 'Q', 9], ['ren_shen', 'T', 9], ['bai_zhu', 'Ta', 9], ['gan_cao', 'S', 9]],
+      c('Warms the middle burner for Spleen–Stomach deficiency cold.', 'Ôn trung tiêu, trị tỳ vị hư hàn.')),
+    F('si_wu_tang', '四物汤', 'Sì Wù Tāng', 'Tứ vật thang', 'Four Substances Decoction',
+      { zh: '太平惠民和剂局方', vi: 'Thái bình huệ dân hòa tễ cục phương (Tống)', en: 'Imperial Grace Formulary (Song dynasty)' }, 'blood_def', 'tonify_blood',
+      [['shu_di', 'Q', 12], ['dang_gui', 'T', 9], ['bai_shao', 'Ta', 9], ['chuan_xiong', 'S', 6]],
+      c('The root formula for blood: two herbs nourish (Shú Dì, Bái Sháo) and two move (Dāng Guī, Chuān Xiōng), so it tonifies without stagnating.', 'Bài gốc về huyết: hai vị bổ (Thục địa, Bạch thược) và hai vị hành (Đương quy, Xuyên khung), bổ mà không trệ.')),
+    F('ma_huang_tang', '麻黄汤', 'Má Huáng Tāng', 'Ma hoàng thang', 'Ephedra Decoction',
+      { zh: '伤寒论 · 张仲景', vi: 'Thương hàn luận · Trương Trọng Cảnh', en: 'Discussion of Cold Damage · Zhang Zhongjing' }, 'wind_cold', 'acrid_warm',
+      [['ma_huang', 'Q', 9], ['gui_zhi', 'T', 6], ['xing_ren', 'Ta', 6], ['gan_cao', 'S', 3]],
+      c('Strongly induces sweating for wind-cold with no sweating (exterior excess).', 'Phát hãn mạnh, trị phong hàn biểu thực không có mồ hôi.')),
+    F('gui_zhi_tang', '桂枝汤', 'Guì Zhī Tāng', 'Quế chi thang', 'Cinnamon Twig Decoction',
+      { zh: '伤寒论 · 张仲景', vi: 'Thương hàn luận · Trương Trọng Cảnh', en: 'Discussion of Cold Damage · Zhang Zhongjing' }, 'ying_wei', 'harmonize_yw',
+      [['gui_zhi', 'Q', 9], ['bai_shao', 'T', 9], ['sheng_jiang', 'Ta', 9], ['da_zao', 'Ta', 12], ['gan_cao', 'S', 6]],
+      c('For wind-cold with sweating and a floating, moderate pulse (exterior deficiency).', 'Trị phong hàn có mồ hôi, mạch phù hoãn (biểu hư).')),
+    F('yin_qiao_san', '银翘散', 'Yín Qiào Sǎn', 'Ngân kiều tán', 'Honeysuckle and Forsythia Powder',
+      { zh: '温病条辨 · 吴鞠通', vi: 'Ôn bệnh điều biện · Ngô Cúc Thông (Thanh)', en: 'Systematic Differentiation of Warm Diseases · Wu Jutong' }, 'wind_heat', 'acrid_cool',
+      [['jin_yin_hua', 'Q', 9], ['lian_qiao', 'Q', 9], ['bo_he', 'T', 6], ['niu_bang_zi', 'T', 9], ['jing_jie', 'T', 5], ['jie_geng', 'Ta', 6], ['gan_cao', 'S', 5]],
+      c('Shown in simplified form; the full formula also contains Dàn Dòu Chǐ, Zhú Yè and Lú Gēn.', 'Trình bày dạng giản lược; bài đầy đủ còn có Đạm đậu xị, Trúc diệp, Lô căn.')),
+    F('xiao_chai_hu_tang', '小柴胡汤', 'Xiǎo Chái Hú Tāng', 'Tiểu sài hồ thang', 'Minor Bupleurum Decoction',
+      { zh: '伤寒论 · 张仲景', vi: 'Thương hàn luận · Trương Trọng Cảnh', en: 'Discussion of Cold Damage · Zhang Zhongjing' }, 'shaoyang', 'harmonize_shaoyang',
+      [['chai_hu', 'Q', 12], ['huang_qin', 'T', 9], ['ban_xia', 'Ta', 9], ['ren_shen', 'Ta', 6], ['sheng_jiang', 'Ta', 9], ['da_zao', 'Ta', 12], ['gan_cao', 'S', 5]],
+      c('The representative "harmonising" formula: releases the half-exterior with Chái Hú while clearing the half-interior with Huáng Qín.', 'Bài tiêu biểu của phép hòa: Sài hồ thấu tà ở bán biểu, Hoàng cầm thanh nhiệt ở bán lý.')),
+    F('xiao_yao_san', '逍遥散', 'Xiāoyáo Sǎn', 'Tiêu dao tán', 'Free and Easy Wanderer Powder',
+      { zh: '太平惠民和剂局方', vi: 'Thái bình huệ dân hòa tễ cục phương (Tống)', en: 'Imperial Grace Formulary (Song dynasty)' }, 'lv_qi_stag', 'soothe_lv',
+      [['chai_hu', 'Q', 9], ['dang_gui', 'T', 9], ['bai_shao', 'T', 9], ['bai_zhu', 'Ta', 9], ['fu_ling', 'Ta', 9], ['bo_he', 'Ta', 3], ['sheng_jiang', 'Ta', 3], ['gan_cao', 'S', 5]],
+      c('Spreads Liver qi while nourishing blood and strengthening the Spleen; widely used for menstrual and stress-related complaints.', 'Sơ can, dưỡng huyết, kiện tỳ; dùng rộng rãi cho rối loạn kinh nguyệt và các chứng do căng thẳng.')),
+    F('bai_hu_tang', '白虎汤', 'Bái Hǔ Tāng', 'Bạch hổ thang', 'White Tiger Decoction',
+      { zh: '伤寒论 · 张仲景', vi: 'Thương hàn luận · Trương Trọng Cảnh', en: 'Discussion of Cold Damage · Zhang Zhongjing' }, 'yangming_heat', 'clear_qi_heat',
+      [['shi_gao', 'Q', 30], ['zhi_mu', 'T', 9], ['jing_mi', 'Ta', 9], ['gan_cao', 'S', 3]],
+      c('For the "four bigs": big fever, big sweating, big thirst, big (flooding) pulse.', 'Trị “tứ đại”: sốt cao, mồ hôi nhiều, khát nhiều, mạch hồng đại.')),
+    F('huang_lian_jie_du_tang', '黄连解毒汤', 'Huáng Lián Jiě Dú Tāng', 'Hoàng liên giải độc thang', 'Coptis Decoction to Resolve Toxicity',
+      { zh: '外台秘要', vi: 'Ngoại đài bí yếu (Đường)', en: 'Arcane Essentials from the Imperial Library (Tang)' }, 'fire_toxin', 'clear_heat_toxin',
+      [['huang_lian', 'Q', 9], ['huang_qin', 'T', 6], ['huang_bai', 'Ta', 6], ['zhi_zi', 'Ta', 9]],
+      c('Four bitter-cold herbs that drain fire from the upper, middle and lower burners.', 'Bốn vị đắng lạnh tả hỏa ở thượng, trung, hạ tiêu.')),
+    F('er_chen_tang', '二陈汤', 'Èr Chén Tāng', 'Nhị trần thang', 'Two Aged Herbs Decoction',
+      { zh: '太平惠民和剂局方', vi: 'Thái bình huệ dân hòa tễ cục phương (Tống)', en: 'Imperial Grace Formulary (Song dynasty)' }, 'phlegm_damp', 'dry_damp_phlegm',
+      [['ban_xia', 'Q', 9], ['chen_pi', 'T', 9], ['fu_ling', 'Ta', 9], ['sheng_jiang', 'Ta', 3], ['gan_cao', 'S', 3]],
+      c('The root formula for phlegm-damp. "Two aged" refers to Bàn Xià and Chén Pí, which work best when aged.', 'Bài gốc trị đàm thấp. “Nhị trần” là Bán hạ và Trần bì, hai vị càng để lâu càng tốt.')),
+    F('liu_wei_di_huang_wan', '六味地黄丸', 'Liù Wèi Dì Huáng Wán', 'Lục vị địa hoàng hoàn', 'Six-Ingredient Rehmannia Pill',
+      { zh: '小儿药证直诀 · 钱乙', vi: 'Tiểu nhi dược chứng trực quyết · Tiền Ất (Tống)', en: 'Key to Medicines and Patterns of Children · Qian Yi' }, 'ki_yin_def', 'nourish_ki_yin',
+      [['shu_di', 'Q', 24], ['shan_zhu_yu', 'T', 12], ['shan_yao', 'T', 12], ['ze_xie', 'Ta', 9], ['mu_dan_pi', 'Ta', 9], ['fu_ling', 'Ta', 9]],
+      c('"Three tonify, three drain" (三补三泻 / tam bổ tam tả): each tonic herb is balanced by a draining partner.', '“Tam bổ tam tả”: mỗi vị bổ có một vị tả đi kèm để cân bằng.')),
+    F('jin_gui_shen_qi_wan', '金匮肾气丸', 'Jīn Guì Shèn Qì Wán', 'Kim quỹ thận khí hoàn', 'Kidney Qi Pill from the Golden Cabinet',
+      { zh: '金匮要略 · 张仲景', vi: 'Kim quỹ yếu lược · Trương Trọng Cảnh', en: 'Essentials from the Golden Cabinet · Zhang Zhongjing' }, 'ki_yang_def', 'warm_ki_yang',
+      [['fu_zi', 'Q', 3], ['gui_zhi', 'Q', 3], ['shu_di', 'T', 24], ['shan_zhu_yu', 'T', 12], ['shan_yao', 'T', 12], ['ze_xie', 'Ta', 9], ['fu_ling', 'Ta', 9], ['mu_dan_pi', 'Ta', 9]],
+      c('Small doses of warming herbs inside a large yin-tonifying base: "to tonify yang, seek it within yin". The original uses dried rehmannia (干地黄).', 'Lượng nhỏ thuốc ôn dương trong nền thuốc bổ âm: “thiện bổ dương giả, tất ư âm trung cầu dương”. Bài gốc dùng Can địa hoàng.')),
+    F('sheng_mai_san', '生脉散', 'Shēng Mài Sǎn', 'Sinh mạch tán', 'Generate the Pulse Powder',
+      { zh: '医学启源 · 张元素', vi: 'Y học khải nguyên · Trương Nguyên Tố (Kim)', en: 'Origins of Medicine · Zhang Yuansu' }, 'qi_yin_def', 'tonify_qi_yin',
+      [['ren_shen', 'Q', 9], ['mai_dong', 'T', 9], ['wu_wei_zi', 'Ta', 6]],
+      c('Three herbs for qi and yin exhausted by heat or long illness: one tonifies, one moistens, one contains.', 'Ba vị trị khí âm hao tổn do nhiệt hoặc bệnh lâu: một bổ, một nhuận, một liễm.')),
+    F('suan_zao_ren_tang', '酸枣仁汤', 'Suān Zǎo Rén Tāng', 'Toan táo nhân thang', 'Sour Jujube Decoction',
+      { zh: '金匮要略 · 张仲景', vi: 'Kim quỹ yếu lược · Trương Trọng Cảnh', en: 'Essentials from the Golden Cabinet · Zhang Zhongjing' }, 'lv_blood_def_insomnia', 'nourish_blood_calm',
+      [['suan_zao_ren', 'Q', 15], ['fu_ling', 'T', 6], ['zhi_mu', 'T', 6], ['chuan_xiong', 'Ta', 6], ['gan_cao', 'S', 3]],
+      c('For "deficiency restlessness with inability to sleep" (虚劳虚烦不得眠).', 'Trị “hư lao hư phiền bất đắc miên” (hư phiền không ngủ được).'))
+  ];
+  D.formulaById = {};
+  D.formulas.forEach(function (f) { D.formulaById[f.id] = f; });
+})();
