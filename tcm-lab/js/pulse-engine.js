@@ -57,6 +57,9 @@
     this.P = TCM.composePulse([]);
     this.pressure = 0.5;
     this.sound = false;
+    this.contact = true;
+    this.lastCur = 0;
+    this.lastFelt = 0;
     this.beats = [];
     this.t0 = performance.now() / 1000;
     this.window = 4;
@@ -151,7 +154,7 @@
     var ctx = this.ctx, w = this.w, h = this.h, P = this.P;
     var now = this.now();
     this.extend(now + 2);
-    var felt = TCM.pulseStrength(P, this.pressure);
+    var felt = this.contact ? TCM.pulseStrength(P, this.pressure) : 0;
     var gaugeW = Math.min(150, Math.max(104, w * 0.24));
     var plotW = w - gaugeW - 12;
     ctx.clearRect(0, 0, w, h);
@@ -176,6 +179,8 @@
     ctx.stroke();
     // leading dot
     var cur = this.valueAt(now);
+    this.lastCur = cur;
+    this.lastFelt = felt;
     ctx.fillStyle = '#d9fff0';
     ctx.beginPath(); ctx.arc(plotW, base - cur * felt * scale, 3, 0, Math.PI * 2); ctx.fill();
 

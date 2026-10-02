@@ -83,10 +83,7 @@
       if (pt && pt.view !== st.view) st.view = pt.view;
       renderStudy(el);
     }
-    TCM.$$('.pt', el).forEach(function (g) {
-      g.addEventListener('click', function () { pick(g.getAttribute('data-id')); });
-      g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(g.getAttribute('data-id')); } });
-    });
+    TCM.figure.onPick(TCM.$('.figure-wrap svg', el), st.view, pick, function (pt) { return st.ch === 'all' || pt.ch === st.ch; });
     TCM.$$('[data-pick]', el).forEach(function (b) { b.addEventListener('click', function () { pick(b.getAttribute('data-pick')); }); });
   }
 

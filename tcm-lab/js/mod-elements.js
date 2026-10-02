@@ -17,8 +17,9 @@
   var ANG = { fire: -90, earth: -18, metal: 54, water: 126, wood: 198 };
   function pos(id, r) { var a = ANG[id] * Math.PI / 180; return [260 + r * Math.cos(a), 250 + r * Math.sin(a)]; }
 
-  function wuxingSvg() {
-    var R = 170, nr = 46, sel = st.sel;
+  function wuxingSvg(ov) {
+    ov = ov || {};
+    var R = 170, nr = 46, sel = ov.hot ? null : st.sel;
     var s = '<svg viewBox="0 0 520 500" role="img" aria-label="' + tx('Five Phases cycles', 'Chu trình Ngũ hành') + '">';
     s += '<defs><marker id="wx-ag" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" style="fill:var(--jade)"/></marker>' +
       '<marker id="wx-ac" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" style="fill:var(--cinnabar)"/></marker></defs>';
@@ -39,9 +40,14 @@
         s += '<path class="wx-arrow wx-ctrl' + (related(id, to) ? '' : ' wx-dim') + '" d="M' + p1[0].toFixed(1) + ' ' + p1[1].toFixed(1) + ' L' + p2[0].toFixed(1) + ' ' + p2[1].toFixed(1) + '" marker-end="url(#wx-ac)"/>';
       });
     }
+    if (ov.hot) {
+      var ha = pos(ov.hot[0], R), hb = pos(ov.hot[1], R);
+      var hdx = hb[0] - ha[0], hdy = hb[1] - ha[1], hl = Math.hypot(hdx, hdy), hux = hdx / hl, huy = hdy / hl;
+      s += '<path class="wx-arrow wx-hot" d="M' + (ha[0] + hux * (nr + 4)).toFixed(1) + ' ' + (ha[1] + huy * (nr + 4)).toFixed(1) + ' L' + (hb[0] - hux * (nr + 10)).toFixed(1) + ' ' + (hb[1] - huy * (nr + 10)).toFixed(1) + '" marker-end="url(#wx-ac)"/>';
+    }
     IDS.forEach(function (id) {
-      var e = E(id), p = pos(id, R), on = sel === id;
-      s += '<g class="wx-node" data-el="' + id + '" tabindex="0" role="button" aria-label="' + TCM.esc(L(e)) + '">' +
+      var e = E(id), p = pos(id, R), on = sel === id || (ov.nodes && ov.nodes[id] === 'is-strong');
+      s += '<g class="wx-node ' + ((ov.nodes && ov.nodes[id]) || '') + '" data-el="' + id + '" tabindex="0" role="button" aria-label="' + TCM.esc(L(e)) + '">' +
         '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="' + nr + '" style="fill:' + (on ? e.color : 'var(--surface)') + ';stroke:' + e.color + '"/>' +
         '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 6).toFixed(1) + '" text-anchor="middle" font-size="30" font-family="Noto Serif SC, serif" font-weight="700" style="fill:' + (on ? '#ffffff' : e.color) + '">' + e.zh + '</text>' +
         '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 24).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="600" style="fill:' + (on ? '#ffffff' : 'var(--ink)') + '">' + TCM.esc(TCM.store.lang() === 'vi' ? e.vi : e.en) + '</text></g>';
@@ -140,6 +146,34 @@
     if (nb) nb.addEventListener('click', function () { st.hour = null; renderClock(el); });
   }
 
+
+  /* ---------- disease spread ---------- */
+  var SCEN = [
+    { id: 'cheng', zh: '肝木乘脾', vi: 'Can mộc thừa tỳ thổ', en: 'Wood overacts on Earth', hot: ['wood', 'earth'], nodes: { wood: 'is-strong', earth: 'is-hit' },
+      story: { en: 'Stress makes Liver qi stagnate and swell. It "overacts" on the Spleen it normally restrains: bloating, poor appetite, loose stools that come with tension (like Ngọc Anh in the clinic).', vi: 'Căng thẳng làm can khí uất kết, thịnh lên, “thừa” (khắc quá mức) tỳ thổ vốn bị nó chế ước: đầy bụng, kém ăn, đi ngoài phân lỏng khi căng thẳng (như ca Ngọc Anh).' },
+      rx: { en: 'Restrain Wood, support Earth (抑木扶土): Xiāoyáo Sǎn; LR3 with ST36.', vi: 'Ức mộc phù thổ (抑木扶土): Tiêu dao tán; Thái xung phối Túc tam lý.' } },
+    { id: 'wu', zh: '木火刑金', vi: 'Mộc hỏa hình kim', en: 'Wood insults Metal', hot: ['wood', 'metal'], nodes: { wood: 'is-strong', metal: 'is-hit' },
+      story: { en: 'Normally Metal cuts Wood. When Liver fire flares it "insults" (counter-attacks) the Lung: a fit of anger brings on coughing, chest and flank pain, even blood-streaked sputum.', vi: 'Bình thường Kim khắc Mộc. Khi can hỏa bốc mạnh sẽ “vũ” (khắc ngược) phế kim: tức giận thì ho, đau ngực sườn, thậm chí đờm lẫn máu.' },
+      rx: { en: 'Assist Metal, calm Wood (佐金平木).', vi: 'Tá kim bình mộc (佐金平木).' } },
+    { id: 'han', zh: '水不涵木', vi: 'Thủy bất hàm mộc', en: 'Water fails to nourish Wood', hot: ['water', 'wood'], nodes: { water: 'is-weak', wood: 'is-hit' },
+      story: { en: 'The mother (Kidney water) is deficient and cannot moisten her child (Liver wood). Liver yang rises unchecked: dizziness, headache, tinnitus, irritability, often with high blood pressure.', vi: 'Mẹ (thận thủy) hư không nuôi được con (can mộc). Can dương bốc lên không chế ước: chóng mặt, đau đầu, ù tai, dễ cáu, hay kèm tăng huyết áp.' },
+      rx: { en: 'Enrich Water to nourish Wood (滋水涵木): Liù Wèi Dì Huáng Wán base; KI3 with LR3.', vi: 'Tư thủy hàm mộc (滋水涵木): nền Lục vị địa hoàng hoàn; Thái khê phối Thái xung.' } },
+    { id: 'sheng', zh: '土不生金', vi: 'Thổ bất sinh kim', en: 'Earth fails to generate Metal', hot: ['earth', 'metal'], nodes: { earth: 'is-weak', metal: 'is-hit' },
+      story: { en: 'A weak Spleen (mother) cannot feed the Lung (child): someone with chronic poor digestion who also catches every cold and is short of breath with a weak voice.', vi: 'Tỳ (mẹ) hư không nuôi được phế (con): người tiêu hóa kém lâu ngày lại hay cảm, hụt hơi, tiếng nói yếu.' },
+      rx: { en: 'Bank up Earth to generate Metal (培土生金): Sì Jūnzǐ Tāng base; ST36, BL20 with BL13.', vi: 'Bồi thổ sinh kim (培土生金): nền Tứ quân tử thang; Túc tam lý, Tỳ du phối Phế du.' } }
+  ];
+  function renderSpread(el) {
+    var sc = SCEN.filter(function (x) { return x.id === st.scen; })[0] || SCEN[0];
+    st.scen = sc.id;
+    el.innerHTML = '<div class="split"><div class="stack"><div class="row" style="gap:6px">' + SCEN.map(function (x) {
+      return '<button type="button" class="chip" data-scen="' + x.id + '" aria-pressed="' + (x.id === sc.id) + '"><span class="zh" lang="zh-Hans">' + x.zh + '</span> ' + TCM.esc(L(x)) + '</button>';
+    }).join('') + '</div><div class="panel wuxing">' + wuxingSvg({ hot: sc.hot, nodes: sc.nodes }) + '</div></div>' +
+      '<div class="stack"><div class="panel stack"><p class="eyebrow">' + TCM.esc(tx(sc.vi, sc.en)) + '</p><h3><span class="zh" lang="zh-Hans" style="color:var(--cinnabar)">' + sc.zh + '</span> ' + TCM.esc(L(sc)) + '</h3><p>' + TCM.esc(L(sc.story)) + '</p>' +
+      '<div class="callout callout-good"><b>' + tx('Treatment strategy', 'Phép trị') + '</b><span>' + TCM.esc(L(sc.rx)) + '</span></div></div>' +
+      '<div class="panel stack"><h4>' + tx('Legend', 'Chú giải') + '</h4><p class="small">' + tx('Thick red arrow: where the disease travels. Shaking circle: the organ being harmed. Faded circle: a deficient phase. Bold ring: an excess phase.', 'Mũi tên đỏ đậm: hướng bệnh truyền. Vòng tròn rung: tạng bị tổn hại. Vòng tròn mờ: hành bị hư. Viền đậm: hành thịnh.') + '</p></div></div></div>';
+    TCM.$$('[data-scen]', el).forEach(function (b) { b.addEventListener('click', function () { st.scen = b.getAttribute('data-scen'); renderSpread(el); }); });
+  }
+
   /* ---------- quiz ---------- */
   function newQuiz() {
     var id = TCM.pick(IDS), kind = TCM.pick(['mother', 'child', 'controls', 'controlledBy', 'zang', 'emotion', 'reverse']);
@@ -201,12 +235,13 @@
       el.innerHTML = '<div class="page">' + TCM.pageHead('五行', tx('Five Phases', 'Ngũ hành'),
         tx('Wood, Fire, Earth, Metal and Water are phases of movement, not substances. Each gathers an organ pair, a sense, a tissue, an emotion, a taste and a season, and the cycles between them explain how disease spreads from one organ to another.',
           'Mộc, Hỏa, Thổ, Kim, Thủy là các trạng thái vận động chứ không phải vật chất. Mỗi hành quy nạp một cặp tạng phủ, một khiếu, một thể, một tình chí, một vị và một mùa; các chu trình giữa chúng giải thích sự truyền biến bệnh từ tạng này sang tạng khác.')) +
-        '<div class="tabs" role="tablist">' + [['cycles', tx('Cycles', 'Sinh khắc')], ['clock', tx('Horary clock', 'Đồng hồ sinh học')], ['quiz', tx('Quiz', 'Trắc nghiệm')]].map(function (t) {
+        '<div class="tabs" role="tablist">' + [['cycles', tx('Cycles', 'Sinh khắc')], ['spread', tx('Disease spread', 'Truyền biến bệnh')], ['clock', tx('Horary clock', 'Đồng hồ sinh học')], ['quiz', tx('Quiz', 'Trắc nghiệm')]].map(function (t) {
           return '<button type="button" class="tab" role="tab" data-mode="' + t[0] + '" aria-selected="' + (st.mode === t[0]) + '">' + t[1] + '</button>';
         }).join('') + '</div><div id="el-body"></div>' + TCM.disclaimer() + '</div>';
       TCM.$$('[data-mode]', el).forEach(function (b) { b.addEventListener('click', function () { st.mode = b.getAttribute('data-mode'); TCM.rerender(); }); });
       var body = TCM.$('#el-body', el);
       if (st.mode === 'clock') renderClock(body);
+      else if (st.mode === 'spread') renderSpread(body);
       else if (st.mode === 'quiz') renderQuiz(body);
       else renderCycles(body);
     }

@@ -6,15 +6,17 @@ Open `tcm-lab/index.html` in a browser, or visit `/tcm-lab/` on the published si
 
 ## Stations
 
-| Station | What you practise |
+| Station | What you do |
 | --- | --- |
-| **Virtual clinic** (诊 · Phòng khám ảo) | 11 patients worked through the Four Examinations: look and listen, ask the Ten Questions, palpate the pulse. Then choose the Eight Principles, the pattern, the treatment principle, a classical formula and acupoints. You get a 100-point review with teaching notes, and points that are unsafe for the patient (for example in pregnancy) cost you marks. |
-| **Tongue reading** (舌 · Thiệt chẩn) | A procedurally drawn tongue. Set body colour, shape, coating, moisture, teeth marks, cracks, a red tip or sides and stasis spots, and read what each sign means, with an organ-map overlay. A quiz covers 12 classic presentations. |
-| **Pulse lab** (脉 · Mạch chẩn) | 15 pulse qualities. Each can be felt at light, medium and heavy finger pressure, with a live waveform, a gauge showing vessel depth and an optional heartbeat sound. Qualities can be combined (e.g. floating + tight). Includes an identification drill and the cun–guan–chi map of both wrists. |
-| **Acupoints** (穴 · Huyệt vị) | 36 core points on front and back figures, each with location, actions, indications and safety notes. A click-to-locate drill scores you in cun. |
-| **Materia medica** (药 · Dược liệu) | 66 herbs, thuốc Bắc and thuốc Nam, with nature, flavour, channels, dose range, cautions, toxicity and pregnancy flags, and the formulas each appears in. Search works without diacritics. Includes flashcards. |
-| **Formula workshop** (方 · Phương tễ) | 16 classical formulas with Quân–Thần–Tá–Sứ (君臣佐使) roles. The decoction builder checks the 18 antagonisms (十八反) and 19 fears (十九畏), pregnancy risks, toxicity and dose, shows the formula's thermal balance, flavour and channel profile, and finds the closest classical formula. Includes a rebuild-the-formula drill. |
-| **Five Phases** (行 · Ngũ hành) | Interactive generating and controlling cycles with full correspondences, the horary organ clock (子午流注) and a quiz. |
+| **Virtual clinic** (诊 · Phòng khám ảo) | Illustrated patients in a consulting room: they shiver, sweat, sigh, cough and wince. Examine them with tools. **Inspect** zooms in on the face. **Tongue** makes the patient stick out their tongue so you can sweep a magnifier over it. **Listen** shows a voice and cough waveform. **Ask** is a chat through the Ten Questions. **Temperature** uses a thermometer and touch. **Pulse** means dragging three fingers onto cun, guan and chi and varying the pressure. **Abdomen** lets you press regions and watch the patient react. Findings stamp the four exams (望闻问切) onto a written case record. You then set the Eight Principles on a yin–yang dial, pick the pattern, method and formula, and place needles by tapping the body. The 100-point review links straight to needling your points and filling your prescription. |
+| **Treatment room** (针 · Phòng thủ thuật) | Needling on a live tissue cross-section of skin, fat, muscle and the deep structure (bone, pleura and lung, artery, spinal canal or bowel). Choose needle length and angle, clean the skin, hold to insert, twirl or lift and thrust until the de qi (得气) meter fills, retain for 20 minutes, then withdraw. Going too deep over the chest, neck or spine triggers the matching incident. Moxibustion moves a smouldering stick to keep the skin in the warm band without blistering. Needles stay standing in the body figure. |
+| **Herbal pharmacy** (秤 · Nhà thuốc) | Open drawers in a medicine cabinet (百子柜), scoop herbs onto a steelyard that tips until it balances, and tip each herb onto paper. Then divide and wrap the packets, and decoct one on a charcoal stove. You set the water, use high or low heat, and add herbs in the right order (先煎 first, 后下 later), reducing to one bowl. The decoction is scored. |
+| **Tongue reading** (舌 · Thiệt chẩn) | Build a tongue (colour, shape, coating, moisture, marks), read each sign with an organ-map overlay, and identify 12 classic presentations. |
+| **Pulse lab** (脉 · Mạch chẩn) | 15 qualities felt through your fingers on the wrist at three depths, with a live waveform, vessel gauge and heartbeat sound. Includes an identification drill and a finger-placement drill. |
+| **Acupoints** (穴 · Huyệt vị) | 36 points on front and back figures, with a click-to-locate drill scored in cun. |
+| **Materia medica** (药 · Dược liệu) | 66 herbs (thuốc Bắc and thuốc Nam) with flashcards. |
+| **Formula workshop** (方 · Phương tễ) | 16 classical formulas, a decoction builder that checks the 18 antagonisms and 19 fears, and a rebuild drill. |
+| **Five Phases** (行 · Ngũ hành) | Animated generating and controlling cycles, a disease-spread simulator (overacting, insulting, mother–child), the horary clock and a quiz. |
 
 Scores are saved in the visitor's browser (`localStorage`) and nothing is sent anywhere.
 
@@ -29,6 +31,10 @@ tcm-lab/
   js/tongue-render.js     SVG tongue generator and tongue reader
   js/pulse-engine.js      canvas pulse simulator
   js/body-figure.js       front and back body figures
+  js/avatar.js            illustrated, animated patients
+  js/wrist-exam.js        draggable three-finger pulse taking
+  js/icons.js             tool icons
+  js/data-visual.js       patient looks, bedside findings, needling depths, herb looks, decoction rules
   js/mod-*.js             one file per station
   js/app.js               router and navigation
 ```

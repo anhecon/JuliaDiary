@@ -5,7 +5,7 @@
   var tx = TCM.tx;
   var confirming = false;
 
-  var STATIONS = ['clinic', 'tongue', 'pulse', 'points', 'herbs', 'formulas', 'elements'];
+  var STATIONS = ['clinic', 'treat', 'pharmacy', 'tongue', 'pulse', 'points', 'herbs', 'formulas', 'elements'];
 
   function progressFor(id) {
     if (id === 'clinic') {
@@ -21,6 +21,13 @@
       pct: TCM.pct(s),
       text: s.n ? tx(s.c + ' / ' + s.n + ' correct', 'Đúng ' + s.c + ' / ' + s.n) : tx('Not practised yet', 'Chưa luyện tập')
     };
+  }
+
+  function roomBg() {
+    return '<svg class="room-bg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="400" height="300" style="fill:var(--surface-2)"/>' +
+      '<rect x="40" y="30" width="62" height="118" rx="3" style="fill:var(--surface);stroke:var(--line)"/><text x="71" y="74" text-anchor="middle" font-size="24" font-family="Noto Serif SC, serif" font-weight="700" style="fill:var(--ink)" opacity=".7">仁</text><text x="71" y="106" text-anchor="middle" font-size="24" font-family="Noto Serif SC, serif" font-weight="700" style="fill:var(--ink)" opacity=".7">心</text>' +
+      '<g opacity=".5"><rect x="290" y="30" width="80" height="170" rx="3" style="fill:var(--surface);stroke:var(--line)"/><path d="M290 72h80M290 114h80M290 156h80M330 30v170" style="stroke:var(--line)"/></g>' +
+      '<rect x="0" y="262" width="400" height="38" style="fill:var(--bronze)" opacity=".3"/></svg>';
   }
 
   TCM.modules.home = {
@@ -40,18 +47,24 @@
       h.push('<p class="eyebrow">' + tx('Vietnamese & Chinese traditional medicine', 'Y học cổ truyền Việt Nam & Trung Hoa') + '</p>');
       h.push('<h1>' + tx('Traditional Medicine Practice Lab', 'Phòng thực hành Y học cổ truyền') + '<span class="zh" lang="zh-Hans">中医 · 东医 实训室</span></h1>');
       h.push('<p class="lede muted" style="max-width:62ch">' + tx(
-        'Train the clinical eye and hand without a patient in the room. See virtual patients from first question to formula, read tongues, feel simulated pulses at three depths, locate acupoints on the body, and build decoctions with a checker that knows the classical incompatibilities.',
-        'Rèn con mắt và đôi tay lâm sàng khi chưa có bệnh nhân thật. Khám bệnh nhân ảo từ câu hỏi đầu tiên đến bài thuốc, xem lưỡi, bắt mạch mô phỏng ở ba mức ấn, xác định huyệt trên cơ thể, và kê thang thuốc với công cụ kiểm tra các tương phản, tương úy kinh điển.'
+        'Practise with your hands, not just your memory. Examine illustrated patients with real tools: magnify the tongue, chat through the Ten Questions, place three fingers on the wrist and press for the pulse, palpate the abdomen. Then needle and moxa the points on a live tissue cross-section, and weigh and decoct your formula in the herbal pharmacy.',
+        'Thực hành bằng đôi tay, không chỉ bằng trí nhớ. Khám bệnh nhân minh họa với dụng cụ thật: soi lưỡi bằng kính lúp, hỏi bệnh theo thập vấn, đặt ba ngón tay bắt mạch, sờ nắn bụng. Rồi châm cứu trên mặt cắt mô sống động, cân và sắc bài thuốc của bạn ở nhà thuốc.'
       ) + '</p>');
-      h.push('<div class="row"><a class="btn btn-primary" href="#clinic">' + tx('See your first patient', 'Khám bệnh nhân đầu tiên') + '</a><a class="btn" href="#tongue">' + tx('Practise tongue reading', 'Luyện xem lưỡi') + '</a></div>');
-      h.push('</div><div class="hero-art"><p class="eyebrow" style="margin-bottom:10px">' + tx('The Four Examinations · 四诊 · Tứ chẩn', 'Tứ chẩn · 四诊 · The Four Examinations') + '</p><div class="four-exams">');
+      h.push('<div class="row"><a class="btn btn-primary" href="#clinic">' + tx('Open the clinic', 'Vào phòng khám') + '</a><a class="btn" href="#treat">' + TCM.icon('needle', 16) + ' ' + tx('Treatment room', 'Phòng thủ thuật') + '</a><a class="btn" href="#pharmacy">' + TCM.icon('scale', 16) + ' ' + tx('Herbal pharmacy', 'Nhà thuốc') + '</a></div>');
+      h.push('<div class="four-exams" style="margin-top:6px">');
       exams.forEach(function (e) {
         h.push('<a class="exam" href="#' + e[3] + '" style="text-decoration:none;color:inherit"><span class="zh" lang="zh-Hans">' + e[0] + '</span><b>' + e[1] + '</b><small>' + e[2] + '</small></a>');
       });
-      h.push('</div><p class="small muted" style="margin-top:10px">' + tx(
-        'Every station uses all three naming systems: English, Vietnamese (Hán-Việt) and Chinese with pinyin.',
-        'Mọi phần đều dùng ba cách gọi: tiếng Việt (Hán-Việt), chữ Hán kèm pinyin và tiếng Anh.'
-      ) + '</p></div></section>');
+      h.push('</div></div>');
+      var waiting = TCM.data.cases.filter(function (k) { return TCM.store.caseBest(k.id) == null; });
+      if (waiting.length < 3) waiting = TCM.data.cases.slice();
+      var three = waiting.slice(0, 3);
+      h.push('<div class="hero-room">' + roomBg() + '<span class="chip tag">' + tx('Waiting room · ', 'Phòng chờ · ') + waiting.length + tx(' patients', ' bệnh nhân') + '</span><div class="queue">' +
+        three.map(function (k) {
+          var v = TCM.data.caseVisual[k.id] || { av: {} };
+          var av = {}; for (var x in v.av) av[x] = v.av[x]; av.sex = k.patient.sex;
+          return '<a href="#clinic" data-open="' + k.id + '" title="' + TCM.esc(k.patient.name + ': ' + TCM.L(k.cc)) + '">' + TCM.renderAvatar(av, { label: k.patient.name }) + '</a>';
+        }).join('') + '</div></div></section>');
 
       h.push('<section class="stack"><h2>' + tx('Practice stations', 'Các trạm thực hành') + '</h2><div class="mod-grid">');
       STATIONS.forEach(function (id) {
@@ -87,6 +100,7 @@
       h.push('</div>');
       el.innerHTML = h.join('');
 
+      TCM.$$('[data-open]', el).forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); TCM.openCase(a.getAttribute('data-open')); }); });
       var r = TCM.$('#reset', el);
       if (r) r.addEventListener('click', function () { confirming = true; TCM.rerender(); });
       var y = TCM.$('#reset-yes', el);

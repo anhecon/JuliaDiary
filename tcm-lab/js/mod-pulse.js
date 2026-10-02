@@ -24,7 +24,7 @@
   }
 
   function monitorHtml(showRate) {
-    return '<div class="monitor"><canvas id="pl-canvas" aria-label="' + tx('Simulated pulse waveform', 'Sóng mạch mô phỏng') + '"></canvas>' +
+    return '<div class="wrist-host" id="pl-wrist"></div><div class="monitor"><canvas id="pl-canvas" aria-label="' + tx('Simulated pulse waveform', 'Sóng mạch mô phỏng') + '"></canvas>' +
       '<div class="monitor-read" id="pl-read"></div></div>' +
       '<div class="panel panel-tight pressure"><label for="pl-pressure" class="small"><b>' + tx('Finger pressure', 'Lực ấn ngón tay') + '</b> · <span id="pl-level"></span></label>' +
       '<input type="range" id="pl-pressure" min="0" max="100" value="' + Math.round(st.pressure * 100) + '">' +
@@ -42,6 +42,8 @@
     engine.setPressure(st.pressure);
     if (st.sound) engine.setSound(true);
     engine.start();
+    var wrist = new TCM.WristExam(TCM.$('#pl-wrist', el), { side: st.hand, preplace: true, engine: engine });
+    wrist.setPressure(st.pressure);
     var read = TCM.$('#pl-read', el), lvl = TCM.$('#pl-level', el);
     function update() {
       var v = TCM.pulseStrength(P, st.pressure);
@@ -58,6 +60,7 @@
     TCM.$('#pl-pressure', el).addEventListener('input', function (e) {
       st.pressure = Number(e.target.value) / 100;
       engine.setPressure(st.pressure);
+      wrist.setPressure(st.pressure);
       update();
     });
     TCM.$('#pl-sound', el).addEventListener('click', function (e) {
@@ -173,25 +176,47 @@
 
   function renderPositions(el) {
     stopEngine();
-    var pp = D.pulsePositions, hand = pp[st.hand][st.pos];
-    var finger = { cun: tx('index finger', 'ngón trỏ'), guan: tx('middle finger', 'ngón giữa'), chi: tx('ring finger', 'ngón áp út') };
-    el.innerHTML = '<div class="split-wide"><div class="panel stack">' +
-      '<div class="row"><div class="seg" role="group" id="pp-hand"><button type="button" data-h="left" aria-pressed="' + (st.hand === 'left') + '">' + tx('Patient’s left wrist', 'Cổ tay trái bệnh nhân') + '</button><button type="button" data-h="right" aria-pressed="' + (st.hand === 'right') + '">' + tx('Patient’s right wrist', 'Cổ tay phải bệnh nhân') + '</button></div></div>' +
-      wristSvg() + '</div>' +
-      '<div class="stack"><div class="panel stack"><h3>' + TCM.esc(L(pp[st.pos])) + ' <span class="zh" lang="zh-Hans" style="color:var(--cinnabar)">' + pp[st.pos].zh + '</span></h3>' +
-      '<dl class="kv"><dt>' + tx('Wrist', 'Cổ tay') + '</dt><dd>' + (st.hand === 'left' ? tx('Left', 'Trái') : tx('Right', 'Phải')) + '</dd>' +
-      '<dt>' + tx('Reflects', 'Phản ánh') + '</dt><dd>' + TCM.nm(hand) + '</dd>' +
-      '<dt>' + tx('Finger', 'Ngón tay') + '</dt><dd>' + finger[st.pos] + '</dd></dl></div>' +
+    var pp = D.pulsePositions;
+    el.innerHTML = '<div class="split-wide"><div class="stack"><div class="row"><div class="seg" role="group" id="pp-hand"><button type="button" data-h="left" aria-pressed="' + (st.hand === 'left') + '">' + tx('Patient\u2019s left wrist', 'Cổ tay trái bệnh nhân') + '</button><button type="button" data-h="right" aria-pressed="' + (st.hand === 'right') + '">' + tx('Patient\u2019s right wrist', 'Cổ tay phải bệnh nhân') + '</button></div>' +
+      '<button type="button" class="btn btn-sm btn-ghost" id="pp-reset">' + tx('Take fingers off', 'Nhấc tay ra') + '</button></div>' +
+      '<div class="wrist-host" id="pp-wrist"></div><div class="callout callout-info" id="pp-stat"></div>' +
+      '<div class="monitor"><canvas id="pp-canvas" aria-label="' + tx('Pulse under your fingers', 'Mạch dưới ngón tay') + '"></canvas></div></div>' +
+      '<div class="stack"><div class="panel stack"><h3>' + tx('Finger placement drill', 'Luyện đặt ngón tay') + '</h3><p class="small">' + tx(
+        'Drag your middle finger onto guan, level with the radial styloid process, then your index finger onto cun (towards the wrist) and your ring finger onto chi. Each position shows the organ it reflects on this wrist. Once all three are right, the pulse comes alive under your fingertips.',
+        'Kéo ngón giữa đặt vào bộ quan, ngang mỏm trâm quay, rồi ngón trỏ vào bộ thốn (phía cổ tay) và ngón áp út vào bộ xích. Mỗi bộ hiện tạng phủ tương ứng ở cổ tay này. Khi đặt đúng cả ba, mạch sẽ đập dưới đầu ngón tay.') + '</p></div>' +
+      '<div class="panel"><div class="table-wrap"><table class="grid-table"><thead><tr><th></th><th>' + tx('Left', 'Trái') + '</th><th>' + tx('Right', 'Phải') + '</th></tr></thead><tbody>' +
+      ['cun', 'guan', 'chi'].map(function (k) { return '<tr><th>' + TCM.esc(L(pp[k])) + ' <span class="zh" lang="zh-Hans">' + pp[k].zh + '</span></th><td>' + TCM.nm(pp.left[k]) + '</td><td>' + TCM.nm(pp.right[k]) + '</td></tr>'; }).join('') +
+      '</tbody></table></div></div>' +
       '<div class="panel stack"><h4>' + tx('How to take the pulse', 'Cách bắt mạch') + '</h4><p class="small">' + tx(
-        'Seat the patient with the forearm resting at heart level, palm up. Place your middle finger on guan, level with the radial styloid process, then your index finger on cun (towards the wrist) and your ring finger on chi. Feel each position at light, medium and heavy pressure: three positions times three depths gives the "three regions and nine indicators" (三部九候 / tam bộ cửu hậu). Take at least 50 beats (五十动).',
-        'Cho bệnh nhân ngồi, cẳng tay đặt ngang tim, lòng bàn tay ngửa. Đặt ngón giữa vào bộ quan, ngang mỏm trâm quay, rồi ngón trỏ vào bộ thốn (phía cổ tay) và ngón áp út vào bộ xích. Bắt mỗi bộ ở ba mức nhẹ, vừa, mạnh: ba bộ nhân ba mức là “tam bộ cửu hậu”. Mỗi lần bắt không dưới 50 nhịp (ngũ thập động).'
+        'Seat the patient with the forearm resting at heart level, palm up. Feel each position at light, medium and heavy pressure: three positions times three depths gives the "three regions and nine indicators" (三部九候 / tam bộ cửu hậu). Take at least 50 beats (五十动).',
+        'Cho bệnh nhân ngồi, cẳng tay đặt ngang tim, lòng bàn tay ngửa. Bắt mỗi bộ ở ba mức nhẹ, vừa, mạnh: ba bộ nhân ba mức là “tam bộ cửu hậu”. Mỗi lần bắt không dưới 50 nhịp (ngũ thập động).'
       ) + '</p></div></div></div>';
-    TCM.$$('[data-h]', el).forEach(function (b) { b.addEventListener('click', function () { st.hand = b.getAttribute('data-h'); renderPositions(el); }); });
-    TCM.$$('[data-pos]', el).forEach(function (g) {
-      function go() { st.pos = g.getAttribute('data-pos'); renderPositions(el); }
-      g.addEventListener('click', go);
-      g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    engine = new TCM.PulseEngine(TCM.$('#pp-canvas', el));
+    engine.labels = { light: tx('Light', 'Phù'), mid: tx('Middle', 'Trung'), deep: tx('Deep', 'Trầm') };
+    engine.set(TCM.composePulse(['normal']));
+    engine.setPressure(0.5);
+    engine.start();
+    var stat = TCM.$('#pp-stat', el);
+    var counted = false;
+    var wrist = new TCM.WristExam(TCM.$('#pp-wrist', el), {
+      side: st.hand, engine: engine,
+      onChange: function (s) {
+        if (s.correct) {
+          stat.className = 'callout callout-good';
+          stat.innerHTML = '<b>' + tx('Correct placement.', 'Đặt tay chính xác.') + '</b><span>' + tx('Feel the pulse rise under all three fingertips.', 'Cảm nhận mạch đập dưới cả ba đầu ngón tay.') + '</span>';
+          if (!counted) { counted = true; TCM.store.record('pulse', true); }
+        } else if (s.placed === 3) {
+          stat.className = 'callout callout-bad';
+          stat.innerHTML = '<b>' + tx('Not quite.', 'Chưa đúng.') + '</b><span>' + tx('Index finger on cun nearest the wrist, middle on guan at the styloid, ring on chi.', 'Ngón trỏ ở thốn gần cổ tay, ngón giữa ở quan ngang mỏm trâm, ngón áp út ở xích.') + '</span>';
+        } else {
+          stat.className = 'callout callout-info';
+          stat.innerHTML = '<span>' + tx('Fingers placed: ', 'Đã đặt: ') + s.placed + ' / 3</span>';
+        }
+      }
     });
+    wrist.setPressure(0.5);
+    TCM.$$('[data-h]', el).forEach(function (b) { b.addEventListener('click', function () { st.hand = b.getAttribute('data-h'); TCM.$$('[data-h]', el).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); wrist.setSide(st.hand); }); });
+    TCM.$('#pp-reset', el).addEventListener('click', function () { renderPositions(el); });
   }
 
   TCM.modules.pulse = {
@@ -206,7 +231,7 @@
         tx('A pulse is described by its depth, rate, width, strength, length and the shape of each wave. The trace shows the force under your finger; the gauge on the right shows where the vessel lies and where your finger is pressing.',
           'Mạch được mô tả theo vị trí nông sâu, tần số, độ to nhỏ, lực, độ dài và hình dạng mỗi làn sóng. Dải sóng cho thấy lực dưới ngón tay; thang bên phải cho thấy mạch nằm ở đâu và ngón tay đang ấn tới đâu.')) +
         '<div class="tabs" role="tablist">' +
-        [['explore', tx('Explore', 'Khám phá')], ['quiz', tx('Identify', 'Nhận diện')], ['positions', tx('Wrist positions', 'Vị trí bắt mạch')]].map(function (t) {
+        [['explore', tx('Explore', 'Khám phá')], ['quiz', tx('Identify', 'Nhận diện')], ['positions', tx('Place your fingers', 'Đặt ngón tay')]].map(function (t) {
           return '<button type="button" class="tab" role="tab" data-mode="' + t[0] + '" aria-selected="' + (st.mode === t[0]) + '">' + t[1] + '</button>';
         }).join('') + '</div><div id="pl-body"></div>' + TCM.disclaimer() + '</div>';
       TCM.$$('[data-mode]', el).forEach(function (b) {

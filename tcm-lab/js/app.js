@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var TCM = window.TCM;
-  var ORDER = ['home', 'clinic', 'tongue', 'pulse', 'points', 'herbs', 'formulas', 'elements'];
+  var ORDER = ['home', 'clinic', 'treat', 'pharmacy', 'tongue', 'pulse', 'points', 'herbs', 'formulas', 'elements'];
   var current = null;
   var view = document.getElementById('view');
   var nav = document.getElementById('nav');

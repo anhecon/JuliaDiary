@@ -93,6 +93,29 @@
       if (Math.abs(x - 150) < 0.5) return [[x, y]];
       return [[x, y], [300 - x, y]];
     },
+    /* Nearest point (within maxD units) to a click on a figure of the given view. */
+    nearest: function (svg, evt, view, maxD, filter) {
+      var q = this.toSvg(svg, evt);
+      if (!q) return null;
+      var best = null, bd = maxD || 14, self = this;
+      TCM.data.points.forEach(function (pt) {
+        if (pt.view !== view || (filter && !filter(pt))) return;
+        self.positions(pt).forEach(function (xy) {
+          var d = Math.hypot(xy[0] - q[0], xy[1] - q[1]);
+          if (d < bd) { bd = d; best = pt.id; }
+        });
+      });
+      return best;
+    },
+    /* Wire a figure so a tap selects the nearest point; points stay keyboard-focusable. */
+    onPick: function (svg, view, fn, filter) {
+      var self = this;
+      svg.style.cursor = 'pointer';
+      svg.addEventListener('click', function (e) { var id = self.nearest(svg, e, view, 14, filter); if (id) fn(id); });
+      TCM.$$('.pt', svg).forEach(function (g) {
+        g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(g.getAttribute('data-id') || g.getAttribute('data-pt')); } });
+      });
+    },
     toSvg: function (svg, evt) {
       var p = svg.createSVGPoint();
       p.x = evt.clientX; p.y = evt.clientY;
