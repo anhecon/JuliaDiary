@@ -73,6 +73,17 @@ for t0, chord in [(7.4, ['D3', 'A3', 'D4', 'F#4']), (9.6, ['B3', 'D4', 'F#4']),
                   (11.8, ['A3', 'D4', 'E4']), (13.9, ['D3', 'A3', 'D4', 'F#4'])]:
     roll(t0, chord, 0.11, 0.45)
 
+# -- the guzheng answers the flute between its phrases, a duet for the two of them
+for t0, n, v in [(10.0, 'F#5', .40), (10.45, 'E5', .35), (11.7, 'D5', .45), (13.2, 'B4', .42),
+                 (13.55, 'A4', .38), (14.9, 'F#5', .40), (15.6, 'E5', .36), (16.0, 'D5', .42)]:
+    place(mix, t0, guzheng(NOTE[n], v, 3.0))
+
+# -- a warm sustained chord swelling under the ending
+t = np.arange(N) / SR
+pad = sum(np.sin(2 * np.pi * NOTE[n] * t * (1 + det)) for n, det in
+          [('D4', 0), ('F#4', 0.0015), ('A4', -0.001), ('D5', 0.002), ('D3', 0)])
+mix += 0.022 * pad * (0.25 + 0.75 * np.clip((t - 11.5) / 4.5, 0, 1)) * np.clip((t - 6) / 4, 0, 1)
+
 # -- closing glissando up the scale and a final ringing chord
 gliss = ['D4', 'E4', 'F#4', 'A4', 'B4', 'D5', 'E5', 'F#5', 'A5', 'B5', 'D6']
 for k, n in enumerate(gliss):
