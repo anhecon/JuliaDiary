@@ -4,6 +4,17 @@ A virtual practice lab for Vietnamese and Chinese traditional medicine (Y học 
 
 Open `tcm-lab/index.html` in a browser, or visit `/tcm-lab/` on the published site.
 
+## The patient journey
+
+Each patient walks through the clinic in order, shown on a floor plan between rooms:
+
+1. **Consulting room (Phòng chẩn bệnh).** Examine, diagnose, and sign a treatment order (points) and a prescription (formula). Nothing is graded yet.
+2. **Treatment room (Phòng thủ thuật).** The patient arrives with your order. They are pregnant or weak whether or not you found out. Over-stimulating a deficient patient makes them faint (晕针). Puncturing the pleura, spinal canal or bowel ends the visit with an ambulance transfer.
+3. **Pharmacy (Nhà thuốc).** Your prescription is filled. Weighing errors, wrong herb order (Fù Zǐ not boiled first leaves it toxic) and a pot boiled dry all change what the medicine can do.
+4. **Follow-up, day 3 (Tái khám).** The patient's face, words, tongue and pulse reflect the outcome. A severity chart and cause-and-effect chain show how much each room contributed, and why. Your consultation is graded only now.
+
+The outcome model (`js/journey.js`) combines the natural course, how well the formula fits the true pattern (temperature, tonify versus drain, exterior versus interior), preparation quality, needling quality and technique matched to deficiency or excess, and complications.
+
 ## Stations
 
 | Station | What you do |
@@ -31,7 +42,9 @@ tcm-lab/
   js/tongue-render.js     SVG tongue generator and tongue reader
   js/pulse-engine.js      canvas pulse simulator
   js/body-figure.js       front and back body figures
-  js/avatar.js            illustrated, animated patients
+  js/avatar.js            shaded patient portraits
+  js/scenes.js            room scenes, material textures, floor plan
+  js/journey.js           patient journey, outcome model, follow-up
   js/wrist-exam.js        draggable three-finger pulse taking
   js/icons.js             tool icons
   js/data-visual.js       patient looks, bedside findings, needling depths, herb looks, decoction rules

@@ -9,7 +9,22 @@
   var EX = 150, EY = 64; // entry point on the skin
   var LENS = [0.5, 1, 1.5, 2, 3];
 
-  var st = { session: null, view: 'front', sel: 'ST36', mode: 'needle', guide: true, n: {}, m: {} };
+  var st = { session: null, view: 'front', sel: 'ST36', mode: 'needle', guide: true, n: {}, m: {}, faint: false };
+  var TRANSFER = { lung: 1, spine: 1, medulla: 1, organ: 1 };
+
+  /* Load the journey patient's treatment order when they arrive. */
+  function syncJourney() {
+    var J = TCM.journey, a = J && J.active;
+    if (a && a.stage === 'treat') {
+      if (!st.session || !st.session.journey || st.session.caseId !== a.caseId) {
+        var k = D.caseById[a.caseId], cl = a.clinic || { points: [] };
+        st.session = { name: k.patient.name, points: cl.points.slice(), preg: !!k.preg, pregKnown: !!cl.pregKnown, caseId: k.id, journey: true, fragile: k.dx.strength.indexOf('deficiency') >= 0 };
+        st.n = {}; st.m = {}; st.faint = false;
+        var first = st.session.points.filter(function (q) { return D.pointById[q]; })[0];
+        if (first) { st.sel = first; st.view = D.pointById[first].view; }
+      }
+    } else if (st.session && st.session.journey) { st.session = null; st.n = {}; st.m = {}; st.faint = false; }
+  }
   var loopOn = false, held = null;
 
   TCM.treatLoad = function (session) {
@@ -22,7 +37,7 @@
 
   function NP(id) { return D.needling[id] || { a: ['perp'], d: [0.5, 1], deep: { t: 'bone', at: 1.5 }, moxa: false }; }
   function nState(id) {
-    return st.n[id] || (st.n[id] = { len: 1.5, angle: 'perp', swab: false, dep: 0, maxDep: 0, deqi: 0, deqiDone: false, twirl: 0, retain: 0, phase: 'ready', incident: null, bone: false, full: false, score: null, pressed: false });
+    return st.n[id] || (st.n[id] = { len: 1.5, angle: 'perp', swab: false, dep: 0, maxDep: 0, deqi: 0, deqiDone: false, twirl: 0, over: 0, retain: 0, phase: 'ready', incident: null, incType: null, bone: false, full: false, score: null, pressed: false });
   }
   function mState(id) { return st.m[id] || (st.m[id] = { dist: 5, T: 34, dose: 0, hot: 0, burned: false, done: false, score: null }); }
   function fatFor(p) { return ['face', 'hand'].indexOf(region(p)) >= 0 ? 0.1 : region(p) === 'trunk' ? 0.4 : 0.25; }
@@ -50,6 +65,7 @@
     if (n.bone) { s -= 15; notes.push(tx('The needle struck bone.', 'Kim chạm xương.')); }
     if (n.full) { s -= 10; notes.push(tx('Inserted to the root of the shaft: always leave part of the shaft out.', 'Châm ngập hết thân kim: luôn chừa lại một phần thân kim.')); }
     if (st.session && st.session.preg && pt.preg) { s = 0; notes.push(tx('Forbidden in pregnancy.', 'Cấm châm khi có thai.')); }
+    if (st.session && st.session.fragile && n.over > 1.5) notes.push(tx('Heavy stimulation for a deficient patient: reinforce gently instead.', 'Kích thích mạnh với người hư: nên bổ pháp nhẹ nhàng.'));
     return { total: Math.max(0, s), notes: notes };
   }
 
@@ -172,7 +188,7 @@
 
   function benchHtml(p) {
     var np = NP(p.id), n = nState(p.id), m = mState(p.id);
-    var preg = st.session && st.session.preg && p.preg;
+    var preg = st.session && st.session.preg && p.preg && (!st.session.journey || st.session.pregKnown);
     var locked = n.phase !== 'ready';
     var h = '<div class="panel stack bench"><div class="row" style="justify-content:space-between;align-items:flex-start"><div class="row" style="gap:12px"><span class="detail-han" lang="zh-Hans" style="font-size:2rem">' + p.zh + '</span><div><h3>' + TCM.esc(TCM.store.lang() === 'vi' ? p.vi : p.py) + ' <span class="mono small muted">' + p.id + '</span></h3><span class="small muted">' + TCM.esc(L(p.loc)) + '</span></div></div>' +
       '<div class="seg" role="group"><button type="button" data-mode="needle" aria-pressed="' + (st.mode === 'needle') + '">' + TCM.icon('needle', 16) + ' ' + tx('Needle', 'Châm') + '</button><button type="button" data-mode="moxa" aria-pressed="' + (st.mode === 'moxa') + '"' + (np.moxa ? '' : ' disabled title="' + tx('Moxa is not usually applied here', 'Thường không cứu ở huyệt này') + '"') + '>' + TCM.icon('moxa', 16) + ' ' + tx('Moxa', 'Cứu') + '</button></div></div>';
@@ -193,8 +209,10 @@
         '<div class="row"><button type="button" class="btn btn-sm" id="tr-retain"' + (n.dep > 0 && !n.incident && n.retain < 1 && n.phase !== 'done' ? '' : ' disabled') + '>' + tx('Retain 20 min', 'Lưu kim 20 phút') + '</button>' +
         '<button type="button" class="btn btn-sm" id="tr-out"' + (n.dep > 0 && n.phase !== 'done' ? '' : ' disabled') + '>' + tx('Withdraw and press the hole', 'Rút kim, ấn lỗ kim') + '</button>' +
         (n.phase === 'done' ? '<button type="button" class="btn btn-sm btn-ghost" id="tr-again">' + tx('Needle again', 'Châm lại') + '</button>' : '') + '</div>';
+      if (st.faint) h += '<div class="callout callout-bad"><b>' + tx('Needle fainting (晕针 · vựng châm)', 'Vựng châm (晕针)') + '</b><span>' + tx('The patient is pale, sweating and dizzy. Stop stimulating.', 'Bệnh nhân tái mặt, vã mồ hôi, chóng mặt. Ngừng kích thích ngay.') + '</span><span><button type="button" class="btn btn-sm btn-primary" id="tr-faintfix">' + tx('Withdraw the needles, lay the patient flat, give warm sweet water', 'Rút kim, cho nằm đầu thấp, uống nước đường ấm') + '</button></span></div>';
       if (n.score) h += resultHtml(n.score);
-      else if (n.incident) h += '<div class="callout callout-bad"><b>' + tx('Incident', 'Tai biến') + '</b><span>' + TCM.esc(L(n.incident)) + '</span></div>';
+      else if (n.incident) h += '<div class="callout callout-bad"><b>' + tx('Incident', 'Tai biến') + '</b><span>' + TCM.esc(L(n.incident)) + '</span>' +
+        (st.session && st.session.journey && TRANSFER[n.incType] ? '<span><button type="button" class="btn btn-sm btn-primary" id="tr-transfer">' + tx('Withdraw, stabilise and call an ambulance', 'Rút kim, sơ cứu và gọi xe cấp cứu') + '</button></span>' : '') + '</div>';
     } else {
       h += '<div class="field"><label class="lbl" for="tr-dist">' + tx('Distance of the moxa stick from the skin (drag the stick or use the slider)', 'Khoảng cách điếu ngải tới da (kéo điếu ngải hoặc dùng thanh trượt)') + '</label><input type="range" id="tr-dist" min="0.5" max="8" step="0.1" value="' + m.dist + '"' + (m.done ? ' disabled' : '') + '></div>' +
         '<div class="meters"><div class="meter-row"><span class="small">' + tx('Skin heat', 'Nhiệt độ da') + '</span><span class="heat-bar"><i id="tr-heat"></i><b class="band"></b></span><span class="mono small" id="tr-T">' + m.T.toFixed(0) + ' °C</span></div>' +
@@ -222,20 +240,39 @@
     }).join('');
     return '<div class="panel stack"><div class="row" style="justify-content:space-between"><h4>' + (st.session ? tx('Treatment for ', 'Điều trị cho ') + TCM.esc(st.session.name) : tx('This session', 'Buổi tập này')) + '</h4>' +
       (cnt ? '<span class="chip ' + (tot / cnt >= 70 ? 'chip-good' : 'chip-warn') + '">' + tx('Average ', 'Trung bình ') + Math.round(tot / cnt) + '</span>' : '') + '</div>' +
-      (st.session && st.session.preg ? '<span class="chip chip-bad">' + tx('Patient is pregnant', 'Bệnh nhân đang mang thai') + '</span>' : '') +
+      (st.session && st.session.preg && (!st.session.journey || st.session.pregKnown) ? '<span class="chip chip-bad">' + tx('Patient is pregnant', 'Bệnh nhân đang mang thai') + '</span>' : '') +
       '<div class="sess-list">' + rows + '</div>' +
-      (st.session ? '<button type="button" class="btn btn-sm btn-ghost" id="tr-free">' + tx('End and switch to free practice', 'Kết thúc, chuyển sang tập tự do') + '</button>' : '') + '</div>';
+      (st.session && st.session.journey ? '<button type="button" class="btn btn-primary" id="tr-finish">' + TCM.icon('scale', 16) + tx(' Finish and send the patient to the pharmacy', ' Kết thúc, đưa bệnh nhân sang nhà thuốc') + ' <span class="mono small">(' + ids.filter(function (id) { return (st.n[id] && st.n[id].score) || (st.m[id] && st.m[id].done); }).length + '/' + ids.length + ')</span></button>'
+        : st.session ? '<button type="button" class="btn btn-sm btn-ghost" id="tr-free">' + tx('End and switch to free practice', 'Kết thúc, chuyển sang tập tự do') + '</button>' : '') + '</div>';
+  }
+
+  function couchHtml() {
+    if (!st.session) return '';
+    var needles = [], moxa = [];
+    st.session.points.forEach(function (id) {
+      var pt = D.pointById[id], n = st.n[id], m = st.m[id];
+      if (!pt) return;
+      var u = pt.xy[1] / 640;
+      if (n && n.dep > 0 && n.phase !== 'done' && !n.incident) needles.push({ u: u, lean: pt.view === 'back' ? 4 : -4 });
+      if (m && m.done) moxa.push({ u: u });
+    });
+    var backN = st.session.points.filter(function (id) { return D.pointById[id] && D.pointById[id].view === 'back'; }).length;
+    return '<div class="couch-wrap">' + TCM.couchScene({ needles: needles, moxa: moxa, view: backN > st.session.points.length / 2 ? 'back' : 'front' }) +
+      '<span class="couch-cap">' + TCM.esc(st.session.name) + ' · ' + (backN > st.session.points.length / 2 ? tx('lying face down', 'nằm sấp') : tx('lying face up', 'nằm ngửa')) + '</span></div>';
   }
 
   function render(el) {
+    syncJourney();
     var p = D.pointById[st.sel] || D.points[0];
-    el.innerHTML = '<div class="page">' + TCM.pageHead('针', tx('Treatment room', 'Phòng thủ thuật'),
+    var jbar = st.session && st.session.journey ? TCM.journey.bar() : '';
+    el.innerHTML = '<div class="page">' + jbar + couchHtml() + TCM.pageHead('针', tx('Treatment room', 'Phòng thủ thuật'),
       tx('Needle and moxa points on a live cross-section of the tissue. Choose the needle and angle, clean the skin, insert, obtain de qi (得气) by twirling or lifting and thrusting, retain, then withdraw. Go too deep over the chest, neck or spine and you will see what happens.',
         'Châm và cứu trên mặt cắt mô sống động. Chọn kim và góc châm, sát trùng, đẩy kim, vê kim hoặc đề sáp để đắc khí (得气), lưu kim rồi rút kim. Châm quá sâu ở ngực, cổ hay cột sống sẽ thấy hậu quả.')) +
       '<div class="row"><label class="row small"><input type="checkbox" id="tr-guide"' + (st.guide ? ' checked' : '') + '> ' + tx('Show guidance (target depth band and cautions)', 'Hiện hướng dẫn (vùng độ sâu mục tiêu và lưu ý)') + '</label></div>' +
       '<div class="treat-grid"><div class="stack"><div class="seg" role="group"><button type="button" data-v="front" aria-pressed="' + (st.view === 'front') + '">' + tx('Front', 'Mặt trước') + '</button><button type="button" data-v="back" aria-pressed="' + (st.view === 'back') + '">' + tx('Back', 'Mặt sau') + '</button></div>' +
       '<div class="figure-wrap">' + TCM.figure.svg(st.view, figureMarks(st.view), tx('Body: choose a point', 'Cơ thể: chọn huyệt')) + '</div>' + sessionHtml() + '</div>' +
       '<div class="stack">' + benchHtml(p) + '</div></div>' + TCM.disclaimer() + '</div>';
+    if (jbar) TCM.journey.wireBar(el);
     wire(el, p);
   }
 
@@ -252,6 +289,17 @@
     TCM.$$('[data-go]', el).forEach(function (b) { b.addEventListener('click', function () { st.sel = b.getAttribute('data-go'); st.view = D.pointById[st.sel].view; TCM.rerender(); }); });
     var fr = TCM.$('#tr-free', el);
     if (fr) fr.addEventListener('click', function () { st.session = null; TCM.rerender(); });
+    var fin = TCM.$('#tr-finish', el);
+    if (fin) fin.addEventListener('click', function () {
+      var rec = {};
+      st.session.points.forEach(function (id) {
+        var n = st.n[id], m = st.m[id];
+        rec[id] = { needle: !!(n && n.score), deqi: !!(n && n.deqiDone), retained: !!(n && n.retain >= 1), over: n ? n.over : 0, incident: !!(n && n.incident), score: n && n.score ? n.score.total : null, moxa: !!m, moxaDone: !!(m && m.done && !m.burned) };
+      });
+      TCM.journey.active.treat = { points: rec };
+      loopOn = false; held = null;
+      TCM.journey.move('pharmacy');
+    });
   }
 
   function say(text, tone) { TCM.say(TCM.$('#tr-xswrap'), text, { tone: tone, silent: true }); }
@@ -260,6 +308,15 @@
     var np = NP(p.id), n = nState(p.id), m = mState(p.id);
     var preg = st.session && st.session.preg && p.preg;
     wireFigure(el);
+    var ff = TCM.$('#tr-faintfix', el);
+    if (ff) ff.addEventListener('click', function () {
+      st.faint = false;
+      Object.keys(st.n).forEach(function (id) { var x = st.n[id]; if (x.dep > 0 && x.phase !== 'done') x.phase = 'out'; });
+      TCM.toast(tx('The patient recovers after a few minutes lying flat.', 'Bệnh nhân hồi phục sau vài phút nằm nghỉ.'));
+      TCM.rerender();
+    });
+    var trf = TCM.$('#tr-transfer', el);
+    if (trf) trf.addEventListener('click', function () { loopOn = false; held = null; TCM.journey.event('incident', n.incType); TCM.journey.transfer(n.incType); });
     TCM.$$('[data-v]', el).forEach(function (b) { b.addEventListener('click', function () { st.view = b.getAttribute('data-v'); TCM.rerender(); }); });
     TCM.$('#tr-guide', el).addEventListener('change', function (e) { st.guide = e.target.checked; TCM.rerender(); });
     TCM.$$('[data-mode]', el).forEach(function (b) { b.addEventListener('click', function () { st.mode = b.getAttribute('data-mode'); m._smoke = false; TCM.rerender(); }); });
@@ -323,10 +380,10 @@
       last = now;
       if (st.mode === 'needle') {
         var moved = false;
-        if (held === 'in' && !n.incident && n.phase !== 'out' && n.phase !== 'done') {
+        if (held === 'in' && !n.incident && !st.faint && n.phase !== 'out' && n.phase !== 'done') {
           if (n.phase === 'ready') {
             n.phase = 'in';
-            if (preg) { n.incident = { en: 'You needled a point that is forbidden in pregnancy.', vi: 'Bạn đã châm huyệt cấm châm khi có thai.' }; say(tx('Doctor, is this point safe for my baby?', 'Bác sĩ ơi, huyệt này có ảnh hưởng đến em bé không?'), 'pain'); needRender = true; }
+            if (preg) { n.incident = { en: 'You needled a point that is forbidden in pregnancy.', vi: 'Bạn đã châm huyệt cấm châm khi có thai.' }; n.incType = 'preg'; if (st.session.journey) TCM.journey.event('preg'); say(tx('Doctor, is this point safe for my baby?', 'Bác sĩ ơi, huyệt này có ảnh hưởng đến em bé không?'), 'pain'); needRender = true; }
             else say(n.swab ? tx('Just a tiny prick.', 'Chỉ nhói nhẹ một chút.') : tx('Ouch! Wasn’t that skin supposed to be cleaned?', 'Ui! Chưa sát trùng mà bác sĩ?'), n.swab ? 'ok' : 'pain');
             n.dep = 0.1;
           }
@@ -334,8 +391,17 @@
         }
         if (held === 'back' && n.dep > 0) { n.dep = Math.max(0.05, n.dep - 0.55 * dt); moved = true; }
         if (held === 'lift' && n.dep > 0) { n.dep = Math.max(0.05, n.dep + Math.sin(now / 90) * 0.012); moved = true; }
-        if (held === 'twirl' || held === 'lift') {
+        if ((held === 'twirl' || held === 'lift') && !st.faint) {
           n.twirl += dt * 6;
+          if (n.deqiDone) {
+            n.over += dt;
+            if (st.session && st.session.fragile && n.over > 3.5 && !st.faint) {
+              st.faint = true; held = null;
+              if (st.session.journey) TCM.journey.event('faint');
+              say(tx('Doctor… I feel dizzy… I am going to be sick…', 'Bác sĩ ơi… tôi chóng mặt quá… buồn nôn…'), 'pain');
+              needRender = true;
+            }
+          }
           var inBand = n.dep >= np.d[0] - 0.1 && n.dep <= np.d[1] + 0.15;
           if (inBand && !n.incident) n.deqi = Math.min(1, n.deqi + dt * (held === 'twirl' ? 0.42 : 0.32));
           else if (now - lastTalk > 2500) { lastTalk = now; say(n.dep < np.d[0] ? tx('I don’t feel much yet.', 'Chưa thấy cảm giác gì.') : tx('That’s a sharp, unpleasant feeling.', 'Thấy nhói, khó chịu.'), 'pain'); }
@@ -343,7 +409,7 @@
             n.deqiDone = true;
             say(tx('Oh… a dull, heavy ache spreading out. Tingling.', 'Ồ… thấy tức, nặng, lan ra xung quanh. Tê tê.'), 'ok');
             TCM.toast(tx('De qi obtained: the needle feels grasped, "like a fish taking the bait".', 'Đã đắc khí: kim như bị mút chặt, “như cá cắn câu”.'));
-            needRender = true;
+            needRender = 'soft';
           }
         } else if (!n.deqiDone) n.deqi = Math.max(0, n.deqi - dt * 0.08);
         if (moved && !n.incident) {
@@ -351,7 +417,8 @@
           var vert = n.dep * sA;
           if (vert > np.deep.at) {
             if (deep.serious) {
-              n.incident = deep.hit; held = null;
+              n.incident = deep.hit; n.incType = np.deep.t; held = null;
+              if (st.session && st.session.journey && np.deep.t === 'artery') TCM.journey.event('hematoma');
               var xsw = TCM.$('#tr-xswrap'); if (xsw) { xsw.classList.remove('flash'); void xsw.offsetWidth; xsw.classList.add('flash'); }
               say(np.deep.t === 'lung' ? tx('Ah! Sharp pain in my chest… I can’t breathe properly!', 'Á! Đau nhói ngực… tôi khó thở quá!') : np.deep.t === 'artery' ? tx('It’s bleeding!', 'Chảy máu rồi!') : tx('Aah! Like an electric shock!', 'Á! Như điện giật!'), 'pain');
               needRender = true;
@@ -399,7 +466,7 @@
         var tt = TCM.$('#tr-T'); if (tt) tt.textContent = m.T.toFixed(0) + ' °C';
         var ds = TCM.$('#tr-dose'); if (ds) ds.style.width = Math.round(m.dose * 100) + '%';
       } else drawMoxa(p, m);
-      if (needRender) { needRender = false; var keep = TCM.$('.bench .say-bubble'); var txt = keep && !keep.hidden ? keep.textContent : null; held = null; TCM.rerender(); if (txt) say(txt); return; }
+      if (needRender) { var soft = needRender === 'soft'; needRender = false; var keep = TCM.$('.bench .say-bubble'); var txt = keep && !keep.hidden ? keep.textContent : null; var h0 = held; held = null; TCM.rerender(); if (soft && h0) { held = h0; var hb2 = TCM.$('[data-hold="' + h0 + '"]'); if (hb2) hb2.classList.add('is-held'); } if (txt) say(txt); return; }
       if (st.mode === 'needle' && Math.round(now / 400) !== Math.round((now - dt * 1000) / 400)) refreshFigureLight(el);
       requestAnimationFrame(tick);
     })(last);
@@ -407,7 +474,7 @@
   function syncButtons(el, n) {
     function set(sel, on) { TCM.$$(sel, el).forEach(function (b) { if (b.disabled === on) b.disabled = !on; }); }
     var live = n.dep > 0 && !n.incident && n.phase !== 'done';
-    set('[data-hold="in"]', !n.incident && n.phase !== 'out' && n.phase !== 'done');
+    set('[data-hold="in"]', !n.incident && !st.faint && n.phase !== 'out' && n.phase !== 'done');
     set('[data-hold="back"]', n.dep > 0 && n.phase !== 'done' && n.phase !== 'out');
     set('[data-hold="twirl"]', live && n.phase !== 'out');
     set('[data-hold="lift"]', live && n.phase !== 'out');
@@ -419,7 +486,7 @@
   var lastFig = '';
   function refreshFigureLight(el) {
     var sig = JSON.stringify(Object.keys(st.n).map(function (k) { return [k, st.n[k].dep > 0, st.n[k].phase]; }));
-    if (sig !== lastFig) { lastFig = sig; refreshFigure(el); }
+    if (sig !== lastFig) { lastFig = sig; refreshFigure(el); var cw = TCM.$('.couch-wrap', el); if (cw) cw.outerHTML = couchHtml(); }
   }
 
   TCM.modules.treat = {
@@ -428,6 +495,7 @@
     sub: { en: 'Châm cứu · 针灸', vi: 'Châm cứu · 针灸' },
     blurb: { en: 'Hands-on needling and moxibustion: pick the needle and angle, insert, twirl for de qi, retain and withdraw, with real anatomical dangers under the skin.', vi: 'Thực hành châm và cứu: chọn kim và góc, đẩy kim, vê kim để đắc khí, lưu kim và rút kim, với những nguy hiểm giải phẫu thật dưới da.' },
     leave: function () { loopOn = false; held = null; },
+    hidden: false,
     render: function (el) { loopOn = false; held = null; render(el); }
   };
 })();

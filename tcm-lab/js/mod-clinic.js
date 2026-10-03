@@ -87,20 +87,6 @@
   }
 
   /* ---------- the consulting room ---------- */
-  function roomBackdrop() {
-    return '<svg class="room-bg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">' +
-      '<rect width="400" height="300" style="fill:var(--surface-2)"/>' +
-      '<rect x="292" y="34" width="62" height="118" rx="3" style="fill:var(--surface);stroke:var(--line)"/>' +
-      '<text x="323" y="78" text-anchor="middle" font-size="24" font-family="Noto Serif SC, serif" font-weight="700" style="fill:var(--ink)" opacity=".75">仁</text>' +
-      '<text x="323" y="110" text-anchor="middle" font-size="24" font-family="Noto Serif SC, serif" font-weight="700" style="fill:var(--ink)" opacity=".75">心</text>' +
-      '<rect x="316" y="124" width="14" height="14" rx="2" style="fill:var(--cinnabar)" opacity=".8"/>' +
-      '<g opacity=".55"><rect x="22" y="40" width="70" height="150" rx="3" style="fill:var(--surface);stroke:var(--line)"/>' +
-      '<path d="M22 78h70M22 115h70M22 152h70M57 40v150" style="stroke:var(--line)"/>' +
-      '<circle cx="40" cy="60" r="2.5" style="fill:var(--bronze)"/><circle cx="75" cy="60" r="2.5" style="fill:var(--bronze)"/><circle cx="40" cy="97" r="2.5" style="fill:var(--bronze)"/><circle cx="75" cy="97" r="2.5" style="fill:var(--bronze)"/><circle cx="40" cy="134" r="2.5" style="fill:var(--bronze)"/><circle cx="75" cy="134" r="2.5" style="fill:var(--bronze)"/><circle cx="40" cy="171" r="2.5" style="fill:var(--bronze)"/><circle cx="75" cy="171" r="2.5" style="fill:var(--bronze)"/></g>' +
-      '<rect x="0" y="262" width="400" height="38" style="fill:var(--bronze)" opacity=".35"/>' +
-      '<rect x="230" y="248" width="56" height="16" rx="8" style="fill:var(--jade)" opacity=".7"/></svg>';
-  }
-
   function recordHtml(k, s) {
     var v = V(k);
     var groups = { wang: [], wen: [], wenq: [], qie: [] };
@@ -280,8 +266,8 @@
     var v = V(k);
     var panels = { look: panelLook, tongue: panelTongue, listen: panelListen, ask: panelAsk, temp: panelTemp, pulse: panelPulse, abd: panelAbd };
     el.innerHTML = '<div class="clinic-grid"><div class="stack"><div class="room">' +
-      '<div class="room-stage" id="cl-stage">' + roomBackdrop() +
-      TCM.renderAvatar(avParams(k), { label: tx('Your patient', 'Bệnh nhân của bạn'), tongue: D.tongue.body[k.tongue.body].fill, cls: s.tool === 'tongue' ? 'open' : '' }) +
+      '<div class="room-stage" id="cl-stage">' + TCM.scene('clinic') +
+      TCM.renderAvatar(avParams(k), { label: tx('Your patient', 'Bệnh nhân của bạn'), tongue: D.tongue.body[k.tongue.body].fill, cls: s.tool === 'tongue' ? 'open' : '' }) + TCM.scene('clinic-fg') +
       '<div class="say-bubble" hidden></div></div>' + toolbar(s) + '</div>' +
       '<div class="panel work">' + panels[s.tool](k, s) + '</div></div>' + recordHtml(k, s) + '</div>';
     var stage = TCM.$('#cl-stage', el);
@@ -505,25 +491,46 @@
       '<div class="tongue-stage">' + TCM.renderTongue(Object.assign({ seed: s.seed }, k.tongue)) + '</div></div></div>';
   }
 
+  /* ---------- journey hand-off: the written orders leave the room with the patient ---------- */
+  function viewHandoff(k, s) {
+    var f = D.formulaById[s.formula];
+    var known = s.asked.indexOf('menses') >= 0 && k.preg;
+    return '<div class="split"><div class="rx-slip"><div class="rx-head"><span class="rx-title" lang="zh-Hans">针灸</span><span class="rx-sub">' + tx('Treatment order', 'Phiếu chỉ định thủ thuật') + '</span><span class="rx-seal" lang="zh-Hans">医</span></div>' +
+      '<p class="small"><b>' + tx('Patient: ', 'Bệnh nhân: ') + '</b>' + TCM.esc(k.patient.name) + ', ' + k.patient.age + '</p>' +
+      '<p class="small"><b>' + tx('Diagnosis: ', 'Chẩn đoán: ') + '</b>' + TCM.esc(TCM.nmText(D.patterns[s.pattern])) + '</p>' +
+      '<p class="small"><b>' + tx('Method: ', 'Pháp: ') + '</b>' + TCM.esc(TCM.nmText(D.principles[s.principle])) + '</p>' +
+      '<ul class="rx-list">' + s.points.map(function (id) { var p = D.pointById[id]; return '<li><span class="mono">' + id + '</span><span>' + TCM.esc(TCM.store.lang() === 'vi' ? p.vi : p.py) + ' <span class="zh" lang="zh-Hans">' + p.zh + '</span></span></li>'; }).join('') + '</ul>' +
+      (known ? '<p class="small" style="color:#a8261c"><b>' + tx('Note: patient is 20 weeks pregnant.', 'Lưu ý: bệnh nhân mang thai 20 tuần.') + '</b></p>' : '') + '</div>' +
+      '<div class="rx-slip"><div class="rx-head"><span class="rx-title" lang="zh-Hans">处方</span><span class="rx-sub">' + tx('Prescription', 'Đơn thuốc') + '</span><span class="rx-seal" lang="zh-Hans">医</span></div>' +
+      '<p class="rx-formula">' + TCM.nm(f, { enMain: 'py' }) + '</p><ul class="rx-list">' + f.herbs.map(function (r) {
+        return '<li><span>' + TCM.esc(TCM.nmText(D.herbById[r[0]], 'py')) + ' <span class="zh" lang="zh-Hans">' + D.herbById[r[0]].zh + '</span></span><span class="mono">' + r[2] + ' g</span></li>';
+      }).join('') + '</ul><p class="small rx-foot">' + tx('× 3 packets. One packet a day.', '× 3 thang. Ngày uống một thang.') + '</p></div></div>' +
+      '<div class="callout callout-info"><span>' + tx('The patient now carries these papers to the next rooms. What you wrote here decides what happens there, and you will see the result when the patient returns in three days. Your diagnosis is graded at the follow-up, not now.', 'Bệnh nhân sẽ mang các phiếu này sang các phòng tiếp theo. Những gì bạn ghi ở đây quyết định những gì xảy ra ở đó, và bạn sẽ thấy kết quả khi bệnh nhân tái khám sau ba ngày. Chẩn đoán của bạn được chấm khi tái khám, không phải bây giờ.') + '</span></div>';
+  }
+
   /* ---------- case screen ---------- */
   function renderCase(el, k) {
     var s = S(k);
     stopEngine();
     var idx = STEPS.map(function (x) { return x[0]; }).indexOf(s.step);
     function rerender() { renderCase(el, k); }
-    var h = '<div class="page"><header class="page-head case-head"><a href="#clinic" class="small" id="cl-back">← ' + tx('Waiting room', 'Phòng chờ') + '</a>' +
+    var inJ = TCM.journey && TCM.journey.isFor(k.id);
+    if (inJ && TCM.journey.active.clinic && s.step !== 'handoff') s.step = 'handoff';
+    var h = '<div class="page">' + (inJ ? TCM.journey.bar() : '') + '<header class="page-head case-head">' + (inJ ? '' : '<a href="#clinic" class="small" id="cl-back">← ' + tx('Waiting room', 'Phòng chờ') + '</a>') +
       '<div class="title-row"><span class="title-han" lang="zh-Hans">诊</span><h1>' + TCM.esc(k.patient.name) + '</h1>' +
       (k.preg && s.asked.indexOf('menses') >= 0 ? '<span class="chip chip-bad">' + tx('Pregnant · 20 weeks', 'Đang mang thai · 20 tuần') + '</span>' : '') + '</div></header>' +
-      '<nav class="steps" aria-label="' + tx('Consultation steps', 'Các bước khám') + '">' + STEPS.map(function (x) {
+      (s.step === 'handoff' ? '' : '<nav class="steps" aria-label="' + tx('Consultation steps', 'Các bước khám') + '">' + STEPS.map(function (x) {
         if (x[0] === 'review' && !s.result) return '';
         var done = (x[0] === 'exam' && s.asked.length && s.found.pulse) || (x[0] === 'dx' && s.pattern) || (x[0] === 'tx' && s.formula);
         return '<button type="button" class="step' + (done ? ' done' : '') + '" data-step="' + x[0] + '"' + (s.step === x[0] ? ' aria-current="step"' : '') + '><span lang="zh-Hans" class="zh">' + x[1] + '</span> ' + TCM.esc(L(x[2])) + '</button>';
-      }).join('') + '</nav><div id="cl-step"></div>';
-    if (s.step !== 'review') {
+      }).join('') + '</nav>') + '<div id="cl-step"></div>';
+    if (s.step === 'handoff') {
+      h += '<div class="row" style="justify-content:flex-end"><button type="button" class="btn btn-primary" id="cl-totreat">' + TCM.icon('needle', 18) + tx(' Send the patient to the treatment room', ' Đưa bệnh nhân sang phòng thủ thuật') + '</button></div>';
+    } else if (s.step !== 'review') {
       var ready = s.pattern && s.principle && s.formula && D.axes.every(function (a) { return s.eight[a.id]; }) && s.points.length >= 1;
       h += '<div class="row" style="justify-content:space-between">' +
         (idx > 0 ? '<button type="button" class="btn" id="cl-prev">← ' + TCM.esc(L(STEPS[idx - 1][2])) + '</button>' : '<span></span>') +
-        (s.step === 'tx' ? '<button type="button" class="btn btn-primary" id="cl-submit"' + (ready ? '' : ' disabled') + '>' + tx('Submit diagnosis and treatment', 'Nộp chẩn đoán và điều trị') + '</button>'
+        (s.step === 'tx' ? '<button type="button" class="btn btn-primary" id="cl-submit"' + (ready ? '' : ' disabled') + '>' + (inJ ? tx('Sign the orders', 'Ký phiếu chỉ định và đơn thuốc') : tx('Submit diagnosis and treatment', 'Nộp chẩn đoán và điều trị')) + '</button>'
           : '<button type="button" class="btn btn-primary" id="cl-nextstep">' + TCM.esc(L(STEPS[idx + 1][2])) + ' →</button>') + '</div>';
       if (s.step === 'tx' && !ready) h += '<p class="small muted" style="text-align:right">' + tx('To submit, complete the Eight Principles, pattern, principle, formula and at least one point.', 'Để nộp bài, hãy hoàn thành bát cương, chứng, pháp, phương và ít nhất một huyệt.') + '</p>';
     }
@@ -531,15 +538,26 @@
     el.innerHTML = h;
     var body = TCM.$('#cl-step', el);
     if (s.step === 'exam') renderExam(body, k, s, rerender);
-    else body.innerHTML = s.step === 'dx' ? viewDx(k, s) : s.step === 'tx' ? viewTx(k, s) : viewReview(k, s);
+    else body.innerHTML = s.step === 'dx' ? viewDx(k, s) : s.step === 'tx' ? viewTx(k, s) : s.step === 'handoff' ? viewHandoff(k, s) : viewReview(k, s);
+    if (inJ) TCM.journey.wireBar(el);
+    var tt = TCM.$('#cl-totreat', el);
+    if (tt) tt.addEventListener('click', function () { stopEngine(); TCM.journey.move('treat'); });
 
     function go(step) { s.step = step; rerender(); window.scrollTo(0, 0); }
     TCM.$$('[data-step]', el).forEach(function (b) { b.addEventListener('click', function () { go(b.getAttribute('data-step')); }); });
     var pv = TCM.$('#cl-prev', el); if (pv) pv.addEventListener('click', function () { go(STEPS[idx - 1][0]); });
     var nx = TCM.$('#cl-nextstep', el); if (nx) nx.addEventListener('click', function () { go(STEPS[idx + 1][0]); });
-    TCM.$('#cl-back', el).addEventListener('click', function (e) { e.preventDefault(); stopEngine(); st.open = null; TCM.rerender(); });
+    var bk = TCM.$('#cl-back', el);
+    if (bk) bk.addEventListener('click', function (e) { e.preventDefault(); stopEngine(); st.open = null; TCM.rerender(); });
     var sb = TCM.$('#cl-submit', el);
-    if (sb) sb.addEventListener('click', function () { s.result = score(k, s); TCM.store.setCase(k.id, s.result.total); go('review'); });
+    if (sb) sb.addEventListener('click', function () {
+      s.result = score(k, s);
+      TCM.store.setCase(k.id, s.result.total);
+      if (inJ) {
+        TCM.journey.active.clinic = { pattern: s.pattern, eight: s.eight, principle: s.principle, formula: s.formula, points: s.points.slice(), asked: s.asked.slice(), pulseRec: s.pulseRec.slice(), result: s.result, pregKnown: s.asked.indexOf('menses') >= 0 && !!k.preg };
+        go('handoff');
+      } else go('review');
+    });
 
     if (s.step === 'dx') {
       TCM.$$('[data-axis]', el).forEach(function (b) { b.addEventListener('click', function () { s.eight[b.getAttribute('data-axis')] = b.getAttribute('data-v'); rerender(); }); });
@@ -570,8 +588,8 @@
 
   function renderList(el) {
     var h = '<div class="page">' + TCM.pageHead('诊', tx('Virtual clinic', 'Phòng khám ảo'),
-      tx('Your waiting room. Pick a patient, examine them with your own eyes, ears and hands, then differentiate the pattern and treat.',
-        'Phòng chờ của bạn. Chọn một bệnh nhân, thăm khám bằng mắt, tai và đôi tay, rồi biện chứng và điều trị.')) +
+      tx('Your waiting room. Pick a patient and follow them through the whole visit: examine and diagnose here, needle in the treatment room, fill the prescription in the pharmacy, then see how they are three days later.',
+        'Phòng chờ của bạn. Chọn một bệnh nhân và theo họ suốt lượt khám: thăm khám và chẩn đoán ở đây, châm cứu ở phòng thủ thuật, bốc thuốc ở nhà thuốc, rồi xem bệnh nhân ra sao sau ba ngày.')) +
       '<div class="waiting">' + D.cases.map(function (k) {
         var best = TCM.store.caseBest(k.id);
         var lv = ['', tx('Foundation', 'Cơ bản'), tx('Intermediate', 'Trung cấp'), tx('Advanced', 'Nâng cao')][k.level];
@@ -582,9 +600,10 @@
       }).join('') + '</div>' + TCM.disclaimer() + '</div>';
     el.innerHTML = h;
     TCM.$$('[data-case]', el).forEach(function (b) {
-      b.addEventListener('click', function () { st.open = b.getAttribute('data-case'); TCM.rerender(); window.scrollTo(0, 0); });
+      b.addEventListener('click', function () { var id = b.getAttribute('data-case'); TCM.clinicReset(id); TCM.journey.start(id); });
     });
   }
+  TCM.clinicReset = function (id) { st.cases[id] = freshState(D.caseById[id]); st.open = id; };
 
   TCM.openCase = function (id) { st.open = id; if (location.hash === '#clinic') TCM.rerender(); else location.hash = 'clinic'; };
 
@@ -596,6 +615,11 @@
     leave: stopEngine,
     render: function (el) {
       stopEngine();
+      if (TCM.journey && TCM.journey.active) {
+        var ja = TCM.journey.active;
+        if (ja.stage !== 'clinic') { location.hash = ja.stage === 'followup' ? 'followup' : ja.stage; return; }
+        st.open = ja.caseId;
+      }
       var k = st.open ? D.caseById[st.open] : null;
       if (k) renderCase(el, k); else renderList(el);
     }

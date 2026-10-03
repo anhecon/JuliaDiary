@@ -82,10 +82,39 @@
     ].join('');
   }
 
+  /* Soft modelling of the body forms so the figure reads as an anatomical illustration. */
+  var fid = 0;
+  function shading(view) {
+    var p = 'bf' + ++fid;
+    var D2 = '#5a3420', L2 = '#fff4e8';
+    function e(x, y, rx, ry, col, op, mir) {
+      var t = '<ellipse cx="' + x + '" cy="' + y + '" rx="' + rx + '" ry="' + ry + '" fill="' + col + '" opacity="' + op + '"/>';
+      if (mir !== false && Math.abs(x - 150) > 1) t += '<ellipse cx="' + (300 - x) + '" cy="' + y + '" rx="' + rx + '" ry="' + ry + '" fill="' + col + '" opacity="' + op + '"/>';
+      return t;
+    }
+    var sh = '';
+    // limbs and torso edges (cylindrical falloff)
+    sh += e(196, 230, 9, 70, D2, 0.32) + e(228, 190, 5, 60, D2, 0.3) + e(212, 200, 4, 40, D2, 0.22) + e(242, 290, 4, 34, D2, 0.28);
+    sh += e(200, 360, 6, 60, D2, 0.3) + e(158, 380, 5, 70, D2, 0.28) + e(194, 520, 5, 60, D2, 0.28) + e(162, 520, 4, 50, D2, 0.22);
+    sh += e(150, 60, 30, 38, 'none', 0) + e(176, 70, 6, 30, D2, 0.28);
+    if (view === 'back') {
+      sh += e(178, 160, 22, 26, L2, 0.22) + e(166, 245, 8, 40, L2, 0.18) + e(150, 220, 3, 90, D2, 0.22, false);
+      sh += e(176, 330, 22, 22, L2, 0.18) + e(176, 360, 22, 6, D2, 0.25) + e(176, 480, 12, 30, L2, 0.18);
+    } else {
+      sh += e(170, 162, 22, 16, L2, 0.25) + e(168, 192, 20, 5, D2, 0.28) + e(150, 238, 2.5, 50, D2, 0.2, false);
+      sh += e(168, 232, 10, 22, L2, 0.12) + e(178, 380, 14, 50, L2, 0.18) + e(177, 470, 8, 30, L2, 0.15) + e(212, 140, 12, 12, L2, 0.25);
+    }
+    sh += e(150, 40, 22, 14, L2, 0.25, false);
+    return '<defs><clipPath id="' + p + 'c"><path d="' + OUTLINE + '"/><ellipse cx="150" cy="57" rx="30" ry="38"/></clipPath>' +
+      '<filter id="' + p + 'b" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5"/></filter>' +
+      '<filter id="' + p + 't" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="1" seed="2"/><feColorMatrix type="matrix" values="0 0 0 0 0.35 0 0 0 0 0.2 0 0 0 0 0.12 0 0 0 0.35 -0.12"/><feComposite in2="SourceAlpha" operator="in"/></filter></defs>' +
+      '<g clip-path="url(#' + p + 'c)" pointer-events="none"><g filter="url(#' + p + 'b)">' + sh + '</g><rect width="300" height="640" fill="#000" filter="url(#' + p + 't)"/></g>';
+  }
+
   TCM.figure = {
     svg: function (view, inner, label) {
       return '<svg viewBox="0 0 300 640" role="img" aria-label="' + TCM.esc(label || view) + '" xmlns="http://www.w3.org/2000/svg">' +
-        (view === 'back' ? back() : front()) + '<g class="pts">' + (inner || '') + '</g></svg>';
+        (view === 'back' ? back() : front()) + shading(view) + '<g class="pts">' + (inner || '') + '</g></svg>';
     },
     /* All screen positions of a point: both sides for bilateral points. */
     positions: function (pt) {

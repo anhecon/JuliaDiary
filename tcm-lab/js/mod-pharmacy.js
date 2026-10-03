@@ -154,7 +154,7 @@
       '<div class="panel stack"><h4>' + tx('Weighed herbs', 'Thuốc đã cân') + '</h4>' + paperHtml(o) +
       (o.wrongs.length ? '<div class="callout callout-warn"><span>' + tx('Wrong herbs returned: ', 'Vị lấy nhầm đã trả lại: ') + TCM.esc(o.wrongs.map(hName).join(', ')) + '</span></div>' : '') +
       '<div class="row"><button type="button" class="btn btn-primary" id="ph-wrap"' + (allDone ? '' : ' disabled') + '>' + tx('Divide into ', 'Chia thành ') + o.packets + tx(' packets and wrap', ' thang và gói lại') + '</button>' +
-      '<button type="button" class="btn btn-ghost btn-sm" id="ph-new">' + tx('New random prescription', 'Đơn thuốc ngẫu nhiên khác') + '</button></div></div>';
+      (o.journeyCase ? '' : '<button type="button" class="btn btn-ghost btn-sm" id="ph-new">' + tx('New random prescription', 'Đơn thuốc ngẫu nhiên khác') + '</button>') + '</div></div>';
 
     function rer() { renderDispense(el, o); }
     TCM.$$('[data-drawer]', el).forEach(function (b) { b.addEventListener('click', function () { var id = b.getAttribute('data-drawer'); o.open = o.open === id ? null : id; rer(); }); });
@@ -193,7 +193,7 @@
       rer();
     });
     TCM.$('#ph-wrap', el).addEventListener('click', function () { o.stage = 'wrap'; TCM.rerender(); });
-    TCM.$('#ph-new', el).addEventListener('click', function () { st.order = makeOrder(TCM.pick(D.formulas).id); TCM.rerender(); });
+    var pn0 = TCM.$('#ph-new', el); if (pn0) pn0.addEventListener('click', function () { st.order = makeOrder(TCM.pick(D.formulas).id); TCM.rerender(); });
   }
 
   function renderWrap(el, o) {
@@ -207,9 +207,9 @@
     var avg = 100 - Math.round(acc.reduce(function (a, b) { return a + b; }, 0) / acc.length * 100);
     el.innerHTML = '<div class="panel stack"><h3>' + tx('Wrapped and tied', 'Đã gói và buộc dây') + '</h3><div class="packets">' + packs + '</div>' +
       '<p>' + tx('Weighing accuracy: ', 'Độ chính xác khi cân: ') + '<b class="mono">' + avg + '%</b>' + (o.wrongs.length ? tx(' · wrong drawers opened: ', ' · lấy nhầm: ') + o.wrongs.length : '') + '</p>' +
-      '<div class="row"><button type="button" class="btn btn-primary" id="ph-decoct">' + TCM.icon('pot', 18) + tx(' Decoct one packet', ' Sắc một thang') + '</button><button type="button" class="btn btn-ghost" id="ph-new">' + tx('New prescription', 'Đơn thuốc mới') + '</button></div></div>';
+      '<div class="row"><button type="button" class="btn btn-primary" id="ph-decoct">' + TCM.icon('pot', 18) + tx(' Decoct one packet', ' Sắc một thang') + '</button>' + (o.journeyCase ? '' : '<button type="button" class="btn btn-ghost" id="ph-new">' + tx('New prescription', 'Đơn thuốc mới') + '</button>') + '</div></div>';
     TCM.$('#ph-decoct', el).addEventListener('click', function () { o.stage = 'decoct'; o.dc = null; TCM.rerender(); });
-    TCM.$('#ph-new', el).addEventListener('click', function () { st.order = makeOrder(TCM.pick(D.formulas).id); TCM.rerender(); });
+    var pn0 = TCM.$('#ph-new', el); if (pn0) pn0.addEventListener('click', function () { st.order = makeOrder(TCM.pick(D.formulas).id); TCM.rerender(); });
   }
 
   /* ---------- decoction ---------- */
@@ -246,7 +246,8 @@
     var f = D.formulaById[o.formula];
     var kind = D.decoction[D.formulaDecoction[f.id] || 'standard'];
     var notes = [], sc = 0;
-    if (d.burnt) return { total: 0, notes: [tx('The pot boiled dry and the herbs burnt. A burnt decoction must be thrown away.', 'Ấm cạn khô, thuốc bị cháy. Thuốc cháy phải bỏ đi.')] };
+    var flags = { firstFail: [], laterFail: [], simmerOff: false };
+    if (d.burnt) return { total: 0, burnt: true, flags: flags, notes: [tx('The pot boiled dry and the herbs burnt. A burnt decoction must be thrown away.', 'Ấm cạn khô, thuốc bị cháy. Thuốc cháy phải bỏ đi.')] };
     if (Math.abs(d.water - kind.water) <= 0) sc += 15; else if (Math.abs(d.water - kind.water) === 1) { sc += 8; notes.push(tx('Usual water for this formula: ', 'Lượng nước thường dùng cho bài này: ') + kind.water + tx(' bowls.', ' bát.')); } else notes.push(tx('Water amount was far off: ', 'Lượng nước sai nhiều: ') + kind.water + tx(' bowls expected.', ' bát.'));
     var ids = o.items.map(function (x) { return x.id; });
     var firsts = ids.filter(function (x) { return prep(x) === 'first'; }), laters = ids.filter(function (x) { return prep(x) === 'later'; }), normals = ids.filter(function (x) { return prep(x) === 'normal'; });
@@ -257,21 +258,23 @@
     var orderOk = !missing.length;
     firsts.forEach(function (x) {
       var boilFirst = Math.min.apply(null, normals.map(function (n) { return d.added[n]; })) - Math.max(d.added[x], d.boilAt || 0);
-      if (boilFirst < 15) { orderOk = false; notes.push(hName(x) + tx(' should be boiled first, about 15–30 minutes before the other herbs (先煎).', ' cần sắc trước khoảng 15–30 phút rồi mới cho các vị khác (tiên tiễn).')); }
+      if (boilFirst < 15 || d.added[x] == null) { orderOk = false; flags.firstFail.push(x); notes.push(hName(x) + tx(' should be boiled first, about 15–30 minutes before the other herbs (先煎).', ' cần sắc trước khoảng 15–30 phút rồi mới cho các vị khác (tiên tiễn).')); }
     });
     laters.forEach(function (x) {
       var cooked = d.min - d.added[x];
-      if (d.added[x] < normalAt || cooked > 10 || cooked < 2) { orderOk = false; notes.push(hName(x) + tx(' should go in only for the last 5–10 minutes (后下) to keep its aromatic oils.', ' chỉ nên cho vào 5–10 phút cuối (hậu hạ) để giữ tinh dầu thơm.')); }
+      if (d.added[x] < normalAt || cooked > 10 || cooked < 2) { orderOk = false; if (cooked > 10 || d.added[x] < normalAt) flags.laterFail.push(x); notes.push(hName(x) + tx(' should go in only for the last 5–10 minutes (后下) to keep its aromatic oils.', ' chỉ nên cho vào 5–10 phút cuối (hậu hạ) để giữ tinh dầu thơm.')); }
     });
     if (orderOk) sc += 25;
     var simmer = d.min - cookStart;
     if (simmer >= kind.min && simmer <= kind.max) sc += 30;
+    else { flags.simmerOff = true; }
+    if (simmer >= kind.min && simmer <= kind.max) { /* scored above */ }
     else if (simmer >= kind.min - 8 && simmer <= kind.max + 10) { sc += 15; notes.push(tx('Simmer time ', 'Thời gian sắc ') + Math.max(0, Math.round(simmer)) + tx(' min; aim for ', ' phút; nên ') + kind.min + '–' + kind.max + '.'); }
     else notes.push(tx('Simmer time ', 'Thời gian sắc ') + Math.max(0, Math.round(simmer)) + tx(' min is far from ', ' phút, quá xa so với ') + kind.min + '–' + kind.max + '. ' + L(kind));
     if (d.vol >= 150 && d.vol <= 260) sc += 30;
     else if (d.vol >= 100 && d.vol <= 350) { sc += 15; notes.push(tx('You strained ', 'Thu được ') + Math.round(d.vol) + tx(' ml; one bowl is about 200 ml.', ' ml; một bát khoảng 200 ml.')); }
     else notes.push(tx('You strained ', 'Thu được ') + Math.round(d.vol) + tx(' ml: far from one bowl (about 200 ml).', ' ml: quá xa so với một bát (khoảng 200 ml).'));
-    return { total: sc, notes: notes, simmer: simmer };
+    return { total: sc, notes: notes, simmer: simmer, flags: flags, burnt: false };
   }
 
   function renderDecoct(el, o) {
@@ -297,7 +300,8 @@
         '<svg class="bowl" viewBox="0 0 120 60" aria-hidden="true"><path d="M8 18 Q60 22 112 18 Q104 56 60 56 Q16 56 8 18 Z" fill="#f5f1e8" stroke="#c9b68e" stroke-width="2"/><ellipse cx="60" cy="19" rx="50" ry="6" fill="' + (d.burnt ? '#1a1410' : '#5a2e12') + '"/></svg></div>' +
         o.result.notes.map(function (x) { return '<div class="callout callout-warn"><span>' + TCM.esc(x) + '</span></div>'; }).join('') +
         (!o.result.notes.length ? '<div class="callout callout-good"><span>' + tx('A textbook decoction. Serve it warm, half an hour after a meal.', 'Thang thuốc chuẩn mực. Uống ấm, sau ăn khoảng nửa giờ.') + '</span></div>' : '') +
-        '<div class="row"><button type="button" class="btn" id="ph-again">' + tx('Decoct another packet', 'Sắc thang khác') + '</button><button type="button" class="btn btn-ghost" id="ph-new">' + tx('New prescription', 'Đơn thuốc mới') + '</button></div></div>' : '') +
+        (o.journeyCase ? '<div class="row"><button type="button" class="btn btn-primary" id="ph-home">' + tx('Give the medicine to the patient and send them home', 'Giao thuốc cho bệnh nhân về nhà') + '</button><button type="button" class="btn" id="ph-again">' + tx('Decoct again', 'Sắc lại') + '</button></div></div>'
+          : '<div class="row"><button type="button" class="btn" id="ph-again">' + tx('Decoct another packet', 'Sắc thang khác') + '</button><button type="button" class="btn btn-ghost" id="ph-new">' + tx('New prescription', 'Đơn thuốc mới') + '</button></div></div>') : '') +
       '</div></div>';
 
     var stage = TCM.$('#ph-stage', el);
@@ -321,6 +325,13 @@
       rer();
     });
     var ag = TCM.$('#ph-again', el); if (ag) ag.addEventListener('click', function () { o.dc = null; o.result = null; rer(); });
+    var hm = TCM.$('#ph-home', el);
+    if (hm) hm.addEventListener('click', function () {
+      var errs = o.items.map(function (it) { return it.target ? Math.abs(it.got - it.target) / it.target : 0; });
+      TCM.journey.active.pharm = { weighErr: errs.reduce(function (a2, b2) { return a2 + b2; }, 0) / Math.max(1, errs.length), wrongs: o.wrongs.slice(), decoct: { total: o.result.total, burnt: !!o.result.burnt, flags: o.result.flags } };
+      loopTok = null;
+      TCM.journey.move('followup');
+    });
     var nw = TCM.$('#ph-new', el); if (nw) nw.addEventListener('click', function () { st.order = makeOrder(TCM.pick(D.formulas).id); TCM.rerender(); });
 
     var tok = {}; loopTok = tok;
@@ -363,14 +374,27 @@
     })(last);
   }
 
+  function syncJourney() {
+    var J = TCM.journey, a = J && J.active;
+    if (a && a.stage === 'pharmacy' && a.clinic) {
+      if (!st.order || st.order.journeyCase !== a.caseId) {
+        st.order = makeOrder(a.clinic.formula, D.caseById[a.caseId].patient.name);
+        st.order.journeyCase = a.caseId;
+      }
+    } else if (st.order && st.order.journeyCase) st.order = null;
+  }
+
   function render(el) {
+    syncJourney();
     var o = O();
-    el.innerHTML = '<div class="page">' + TCM.pageHead('药房', tx('Herbal pharmacy', 'Nhà thuốc'),
+    var jbar = o.journeyCase ? TCM.journey.bar() : '';
+    el.innerHTML = '<div class="page">' + jbar + TCM.pageHead('药房', tx('Herbal pharmacy', 'Nhà thuốc'),
       tx('Fill a prescription the traditional way: open the cabinet drawers, weigh each herb on the steelyard for all the packets, wrap them, then decoct a packet on the charcoal stove.',
         'Bốc thuốc theo lối truyền thống: mở ngăn tủ thuốc, cân từng vị trên cân tiểu ly cho đủ số thang, gói lại, rồi sắc một thang trên bếp than.')) +
       '<nav class="steps" aria-label="' + tx('Pharmacy steps', 'Các bước') + '">' + [['dispense', '抓药', tx('Weigh', 'Bốc thuốc')], ['wrap', '包药', tx('Wrap', 'Gói thuốc')], ['decoct', '煎药', tx('Decoct', 'Sắc thuốc')]].map(function (x) {
         return '<span class="step' + (o.stage === x[0] ? '" aria-current="step' : '') + '"><span class="zh" lang="zh-Hans">' + x[1] + '</span> ' + x[2] + '</span>';
       }).join('') + '</nav><div id="ph-body"></div>' + TCM.disclaimer() + '</div>';
+    if (jbar) TCM.journey.wireBar(el);
     var body = TCM.$('#ph-body', el);
     if (o.stage === 'wrap') renderWrap(body, o);
     else if (o.stage === 'decoct') renderDecoct(body, o);
